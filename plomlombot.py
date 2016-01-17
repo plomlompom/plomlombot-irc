@@ -6,20 +6,20 @@ import re
 import urllib.request
 import html
 
-servernet = "irc.freenode.net"
-port = 6667
-servername = ""
-timeout = 240
-username = "plomlombot"
-nickname = username
-channel = "#zrolaps"
+SERVERNET = "irc.freenode.net"
+PORT = 6667
+TIMEOUT = 240
+USERNAME = "plomlombot"
+NICKNAME = USERNAME
+CHANNEL = "#zrolaps-test"
 
 class ExceptionForRestart(Exception):
     pass
 
 class IO:
 
-    def __init__(self, servernet, port):
+    def __init__(self, servernet, port, timeout):
+        self.timeout = timeout
         self.socket = socket.socket()
         self.socket.connect((servernet, port))
         self.socket.setblocking(0)
@@ -29,11 +29,11 @@ class IO:
         self.servername = self.recv_line(send_ping=False).split(" ")[0][1:]
 
     def _pingtest(self, send_ping=True):
-        if self.last_pong + timeout < time.time():
+        if self.last_pong + self.timeout < time.time():
             print("SERVER NOT ANSWERING")
             raise ExceptionForRestart
         if send_ping:
-            self.send_line("PING " + nickname + " " + self.servername)
+            self.send_line("PING " + self.servername)
 
     def send_line(self, msg):
         msg = msg.replace("\r", " ")
@@ -56,7 +56,7 @@ class IO:
         if len(self.line_buffer) > 0:
             return self.line_buffer.pop(0)
         while True:
-            ready = select.select([self.socket], [], [], int(timeout / 2))
+            ready = select.select([self.socket], [], [], int(self.timeout / 2))
             if not ready[0]:
                 self._pingtest(send_ping)
                 return None
@@ -79,12 +79,12 @@ class IO:
             line)
         return line
 
-def init_connection():
-    print("CONNECTING TO " + servernet)
-    io = IO(servernet, port)
-    io.send_line("NICK " + nickname)
-    io.send_line("USER " + username + " 0 * : ")
-    io.send_line("JOIN " + channel)
+def init_session():
+    print("CONNECTING TO " + SERVERNET)
+    io = IO(SERVERNET, PORT, TIMEOUT)
+    io.send_line("NICK " + NICKNAME)
+    io.send_line("USER " + USERNAME + " 0 * : ")
+    io.send_line("JOIN " + CHANNEL)
     return io
 
 def lineparser_loop():
@@ -128,7 +128,7 @@ def lineparser_loop():
             if rune != ":":
                 receiver += rune
         target = sender
-        if receiver != nickname:
+        if receiver != NICKNAME:
             target = receiver
         msg = str.join(" ", tokens[3:])[1:]
         url_check(msg)
@@ -146,7 +146,7 @@ def lineparser_loop():
 
 while 1:
     try:
-        io = init_connection()
+        io = init_session()
         lineparser_loop()
     except ExceptionForRestart:
         io.socket.close()
