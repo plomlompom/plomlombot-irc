@@ -12,7 +12,7 @@ servername = ""
 timeout = 240
 username = "plomlombot"
 nickname = username
-channel = "#zrolaps"
+channel = "#zrolaps-test"
 
 class IO:
 
@@ -104,10 +104,10 @@ while 1:
                 url = matches[i]
                 webpage = urllib.request.urlopen(url)
                 content_type = webpage.info().get_content_type()
-                if not content_type in ('text/html', 'text/xml',
+                charset = webpage.info().get_content_charset()
+                if not charset or not content_type in ('text/html', 'text/xml',
                     'application/xhtml+xml'):
                     continue
-                charset = webpage.info().get_content_charset()
                 content = webpage.read().decode(charset)
                 title = str(content).split('<title>')[1].split('</title>')[0]
                 title = html.unescape(title)
