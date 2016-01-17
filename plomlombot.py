@@ -71,56 +71,66 @@ class IO:
             line)
         return line
 
-def url_check(msg):
-    matches = re.findall("(https?://[^\s]+)", msg)
-    for i in range(len(matches)):
-        url = matches[i]
-        try:
-            webpage = urllib.request.urlopen(url, timeout=15)
-        except urllib.error.HTTPError as error:
-            print("TROUBLE FOLLOWING URL: " + str(error))
+def lineparser_loop():
+
+    def act_on_privmsg(tokens):
+
+        def url_check(msg):
+            matches = re.findall("(https?://[^\s]+)", msg)
+            for i in range(len(matches)):
+                url = matches[i]
+                try:
+                    webpage = urllib.request.urlopen(url, timeout=15)
+                except urllib.error.HTTPError as error:
+                    print("TROUBLE FOLLOWING URL: " + str(error))
+                    continue
+                charset = webpage.info().get_content_charset()
+                if not charset:
+                    charset="utf-8"
+                content_type = webpage.info().get_content_type()
+                if not content_type in ('text/html', 'text/xml',
+                        'application/xhtml+xml'):
+                    print("TROUBLE INTERPRETING URL: bad content type "
+                            + content_type)
+                    continue
+                content = webpage.read().decode(charset)
+                title = str(content).split('<title>')[1].split('</title>')[0]
+                title = html.unescape(title)
+                io.send_line("PRIVMSG " + target + " :page title for url: "
+                    + title)
+
+        sender = ""
+        for rune in tokens[0]:
+            if rune == "!":
+                break
+            if rune != ":":
+                sender += rune
+        receiver = ""
+        for rune in tokens[2]:
+            if rune == "!":
+                break
+            if rune != ":":
+                receiver += rune
+        target = sender
+        if receiver != nickname:
+            target = receiver
+        msg = str.join(" ", tokens[3:])[1:]
+        url_check(msg)
+
+    while 1:
+        line = io.recv_line()
+        if not line:
             continue
-        charset = webpage.info().get_content_charset()
-        if not charset:
-            charset="utf-8"
-        content_type = webpage.info().get_content_type()
-        if not content_type in ('text/html', 'text/xml',
-                'application/xhtml+xml'):
-            print("TROUBLE INTERPRETING URL: bad content_type " + content_type)
-            continue
-        content = webpage.read().decode(charset)
-        title = str(content).split('<title>')[1].split('</title>')[0]
-        title = html.unescape(title)
-        io.send_line("PRIVMSG " + target + " :page title for url: " + title)
+        tokens = line.split(" ")
+        if len(tokens) > 1:
+            if tokens[1] == "PRIVMSG":
+                act_on_privmsg(tokens)
+            if tokens[0] == "PING":
+                io.send_line("PONG " + tokens[1])
 
 io = IO(servernet, port)
 io.send_line("NICK " + nickname)
 io.send_line("USER " + username + " 0 * : ")
 io.send_line("JOIN " + channel)
 servername = io.recv_line().split(" ")[0][1:]
-while 1:
-    line = io.recv_line()
-    if not line:
-        continue
-    tokens = line.split(" ")
-    if len(tokens) > 1:
-        if tokens[1] == "PRIVMSG":
-            sender = ""
-            for rune in tokens[0]:
-                if rune == "!":
-                    break
-                if rune != ":":
-                    sender += rune
-            receiver = ""
-            for rune in tokens[2]:
-                if rune == "!":
-                    break
-                if rune != ":":
-                    receiver += rune
-            target = sender
-            if receiver != nickname:
-                target = receiver
-            msg = str.join(" ", tokens[3:])[1:]
-            url_check(msg)
-        if tokens[0] == "PING":
-            io.send_line("PONG " + tokens[1])
+lineparser_loop()
