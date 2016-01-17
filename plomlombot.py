@@ -78,8 +78,11 @@ def url_check(msg):
         webpage = urllib.request.urlopen(url, timeout=15)
         content_type = webpage.info().get_content_type()
         charset = webpage.info().get_content_charset()
-        if not charset or not content_type in ('text/html', 'text/xml',
+        if not charset:
+            charset="utf-8"
+        if not content_type in ('text/html', 'text/xml',
                 'application/xhtml+xml'):
+            print("TROUBLE INTERPRETING URL: bad content_type " + content_type)
             continue
         content = webpage.read().decode(charset)
         title = str(content).split('<title>')[1].split('</title>')[0]
