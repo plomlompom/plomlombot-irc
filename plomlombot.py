@@ -75,11 +75,15 @@ def url_check(msg):
     matches = re.findall("(https?://[^\s]+)", msg)
     for i in range(len(matches)):
         url = matches[i]
-        webpage = urllib.request.urlopen(url, timeout=15)
-        content_type = webpage.info().get_content_type()
+        try:
+            webpage = urllib.request.urlopen(url, timeout=15)
+        except urllib.error.HTTPError as error:
+            print("TROUBLE FOLLOWING URL: " + str(error))
+            continue
         charset = webpage.info().get_content_charset()
         if not charset:
             charset="utf-8"
+        content_type = webpage.info().get_content_type()
         if not content_type in ('text/html', 'text/xml',
                 'application/xhtml+xml'):
             print("TROUBLE INTERPRETING URL: bad content_type " + content_type)
