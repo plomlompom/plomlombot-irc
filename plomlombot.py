@@ -19,19 +19,21 @@ class ExceptionForRestart(Exception):
 
 class IO:
 
-    def __init__(self, server, port):
+    def __init__(self, servernet, port):
         self.socket = socket.socket()
-        self.socket.connect((server, port))
+        self.socket.connect((servernet, port))
         self.socket.setblocking(0)
         self.line_buffer = []
         self.rune_buffer = ""
         self.last_pong = time.time()
+        self.servername = self.recv_line(send_ping=False).split(" ")[0][1:]
 
-    def _pingtest(self):
+    def _pingtest(self, send_ping=True):
         if self.last_pong + timeout < time.time():
-            print("SERVER NOT ANSWERING TO PING")
+            print("SERVER NOT ANSWERING")
             raise ExceptionForRestart
-        self.send_line("PING " + nickname + " " + servername)
+        if send_ping:
+            self.send_line("PING " + nickname + " " + self.servername)
 
     def send_line(self, msg):
         msg = msg.replace("\r", " ")
@@ -50,13 +52,13 @@ class IO:
                 raise ExceptionForRestart
             total_sent_len += sent_len
 
-    def recv_line_wrapped(self):
+    def _recv_line_wrapped(self, send_ping=True):
         if len(self.line_buffer) > 0:
             return self.line_buffer.pop(0)
         while True:
             ready = select.select([self.socket], [], [], int(timeout / 2))
             if not ready[0]:
-                self._pingtest()
+                self._pingtest(send_ping)
                 return None
             self.last_pong = time.time()
             received_runes = self.socket.recv(1024).decode("UTF-8")
@@ -70,8 +72,8 @@ class IO:
             if len(self.line_buffer) > 0:
                 return self.line_buffer.pop(0)
 
-    def recv_line(self):
-        line = self.recv_line_wrapped()
+    def recv_line(self, send_ping=True):
+        line = self._recv_line_wrapped(send_ping)
         if line:
             print("LINE FROM SERVER " + str(datetime.datetime.now()) + ": " +
             line)
@@ -83,7 +85,6 @@ def init_connection():
     io.send_line("NICK " + nickname)
     io.send_line("USER " + username + " 0 * : ")
     io.send_line("JOIN " + channel)
-    servername = io.recv_line().split(" ")[0][1:]
     return io
 
 def lineparser_loop():
