@@ -1,11 +1,13 @@
 import socket
-import datetime 
+import datetime
 import select
 import time
 import re
 import urllib.request
 import html
 
+servernet = "irc.freenode.net"
+port = 6667
 servername = ""
 timeout = 480
 username = "plomlombot"
@@ -69,7 +71,7 @@ class IO:
             line)
         return line
 
-io = IO("irc.freenode.net", 6667)
+io = IO(servernet, port)
 io.send_line("NICK " + nickname)
 io.send_line("USER " + username + " 0 * : ")
 io.send_line("JOIN " + channel)
