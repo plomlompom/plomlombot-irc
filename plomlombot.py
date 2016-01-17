@@ -12,7 +12,10 @@ servername = ""
 timeout = 240
 username = "plomlombot"
 nickname = username
-channel = "#zrolaps-test"
+channel = "#zrolaps"
+
+class ExceptionForRestart(Exception):
+    pass
 
 class IO:
 
@@ -26,7 +29,8 @@ class IO:
 
     def _pingtest(self):
         if self.last_pong + timeout < time.time():
-            raise RuntimeError("server not answering")
+            print("SERVER NOT ANSWERING TO PING")
+            raise ExceptionForRestart
         self.send_line("PING " + nickname + " " + servername)
 
     def send_line(self, msg):
@@ -42,7 +46,8 @@ class IO:
         while total_sent_len < msg_len:
             sent_len = self.socket.send(bytes(msg[total_sent_len:], "UTF-8"))
             if sent_len == 0:
-                raise RuntimeError("socket connection broken")
+                print("SOCKET CONNECTION BROKEN")
+                raise ExceptionForRestart
             total_sent_len += sent_len
 
     def recv_line_wrapped(self):
@@ -56,7 +61,8 @@ class IO:
             self.last_pong = time.time()
             received_runes = self.socket.recv(1024).decode("UTF-8")
             if len(received_runes) == 0:
-                raise RuntimeError("socket connection broken")
+                print("SOCKET CONNECTION BROKEN")
+                raise ExceptionForRestart
             self.rune_buffer += received_runes 
             lines_split = str.split(self.rune_buffer, "\r\n")
             self.line_buffer += lines_split[:-1]
@@ -70,6 +76,15 @@ class IO:
             print("LINE FROM SERVER " + str(datetime.datetime.now()) + ": " +
             line)
         return line
+
+def init_connection():
+    print("CONNECTING TO " + servernet)
+    io = IO(servernet, port)
+    io.send_line("NICK " + nickname)
+    io.send_line("USER " + username + " 0 * : ")
+    io.send_line("JOIN " + channel)
+    servername = io.recv_line().split(" ")[0][1:]
+    return io
 
 def lineparser_loop():
 
@@ -128,9 +143,10 @@ def lineparser_loop():
             if tokens[0] == "PING":
                 io.send_line("PONG " + tokens[1])
 
-io = IO(servernet, port)
-io.send_line("NICK " + nickname)
-io.send_line("USER " + username + " 0 * : ")
-io.send_line("JOIN " + channel)
-servername = io.recv_line().split(" ")[0][1:]
-lineparser_loop()
+while 1:
+    try:
+        io = init_connection()
+        lineparser_loop()
+    except ExceptionForRestart:
+        io.socket.close()
+        continue
