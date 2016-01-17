@@ -71,6 +71,21 @@ class IO:
             line)
         return line
 
+def url_check(msg):
+    matches = re.findall("(https?://[^\s]+)", msg)
+    for i in range(len(matches)):
+        url = matches[i]
+        webpage = urllib.request.urlopen(url)
+        content_type = webpage.info().get_content_type()
+        charset = webpage.info().get_content_charset()
+        if not charset or not content_type in ('text/html', 'text/xml',
+                'application/xhtml+xml'):
+            continue
+        content = webpage.read().decode(charset)
+        title = str(content).split('<title>')[1].split('</title>')[0]
+        title = html.unescape(title)
+        io.send_line("PRIVMSG " + target + " :page title for url: " + title)
+
 io = IO(servernet, port)
 io.send_line("NICK " + nickname)
 io.send_line("USER " + username + " 0 * : ")
@@ -99,19 +114,6 @@ while 1:
             if receiver != nickname:
                 target = receiver
             msg = str.join(" ", tokens[3:])[1:]
-            matches = re.findall("(https?://[^\s]+)", msg)
-            for i in range(len(matches)):
-                url = matches[i]
-                webpage = urllib.request.urlopen(url)
-                content_type = webpage.info().get_content_type()
-                charset = webpage.info().get_content_charset()
-                if not charset or not content_type in ('text/html', 'text/xml',
-                    'application/xhtml+xml'):
-                    continue
-                content = webpage.read().decode(charset)
-                title = str(content).split('<title>')[1].split('</title>')[0]
-                title = html.unescape(title)
-                io.send_line("PRIVMSG "
-                    + target + " :page title for url: " + title)
+            url_check(msg)
         if tokens[0] == "PING":
             io.send_line("PONG " + tokens[1])
