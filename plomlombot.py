@@ -13,6 +13,7 @@ nickname = username
 channel = "#zrolaps"
 
 class IO:
+
     def __init__(self, server, port):
         self.socket = socket.socket()
         self.socket.connect((server, port))
@@ -20,12 +21,20 @@ class IO:
         self.line_buffer = []
         self.rune_buffer = ""
         self.last_pong = time.time()
+
     def _pingtest(self):
         if self.last_pong + timeout < time.time():
             raise RuntimeError("server not answering")
         self.send_line("PING " + nickname + " " + servername)
-    def send_line(self, msg_orig):
-        msg = msg_orig + "\r\n"
+
+    def send_line(self, msg):
+        msg = msg.replace("\r", " ")
+        msg = msg.replace("\n", " ")
+        if len(msg.encode("utf-8")) > 510:
+            print("NOT SENT LINE TO SERVER (too long): " + msg)
+        print("LINE TO SERVER: "
+            + str(datetime.datetime.now()) + ": " + msg)
+        msg = msg + "\r\n"
         msg_len = len(msg)
         total_sent_len = 0
         while total_sent_len < msg_len:
@@ -33,8 +42,7 @@ class IO:
             if sent_len == 0:
                 raise RuntimeError("socket connection broken")
             total_sent_len += sent_len
-        print("LINE TO SERVER: "
-            + str(datetime.datetime.now()) + ": " + msg_orig)
+
     def recv_line_wrapped(self):
         if len(self.line_buffer) > 0:
             return self.line_buffer.pop(0)
@@ -53,6 +61,7 @@ class IO:
             self.rune_buffer = lines_split[-1]
             if len(self.line_buffer) > 0:
                 return self.line_buffer.pop(0)
+
     def recv_line(self):
         line = self.recv_line_wrapped()
         if line:
