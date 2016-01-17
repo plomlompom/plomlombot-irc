@@ -79,15 +79,15 @@ class IO:
             line)
         return line
 
-def init_session():
-    print("CONNECTING TO " + SERVERNET)
-    io = IO(SERVERNET, PORT, TIMEOUT)
-    io.send_line("NICK " + NICKNAME)
-    io.send_line("USER " + USERNAME + " 0 * : ")
-    io.send_line("JOIN " + CHANNEL)
+def init_session(servernet, port, timeout, nickname, username, channel):
+    print("CONNECTING TO " + servernet)
+    io = IO(servernet, port, timeout)
+    io.send_line("NICK " + nickname)
+    io.send_line("USER " + username + " 0 * : ")
+    io.send_line("JOIN " + channel)
     return io
 
-def lineparser_loop():
+def lineparser_loop(io, nickname):
 
     def act_on_privmsg(tokens):
 
@@ -128,7 +128,7 @@ def lineparser_loop():
             if rune != ":":
                 receiver += rune
         target = sender
-        if receiver != NICKNAME:
+        if receiver != nickname:
             target = receiver
         msg = str.join(" ", tokens[3:])[1:]
         url_check(msg)
@@ -143,11 +143,11 @@ def lineparser_loop():
                 act_on_privmsg(tokens)
             if tokens[0] == "PING":
                 io.send_line("PONG " + tokens[1])
-
 while 1:
     try:
-        io = init_session()
-        lineparser_loop()
+        io = init_session(SERVERNET, PORT, TIMEOUT, NICKNAME, USERNAME,
+                CHANNEL)
+        lineparser_loop(io, NICKNAME)
     except ExceptionForRestart:
         io.socket.close()
         continue
