@@ -1,0 +1,2 @@
+# plomlombot-irc
+irc bot
