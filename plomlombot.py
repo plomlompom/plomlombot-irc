@@ -75,7 +75,7 @@ def url_check(msg):
     matches = re.findall("(https?://[^\s]+)", msg)
     for i in range(len(matches)):
         url = matches[i]
-        webpage = urllib.request.urlopen(url)
+        webpage = urllib.request.urlopen(url, timeout=15)
         content_type = webpage.info().get_content_type()
         charset = webpage.info().get_content_charset()
         if not charset or not content_type in ('text/html', 'text/xml',
