@@ -141,7 +141,7 @@ def lineparser_loop(io, nickname):
         msg = str.join(" ", tokens[3:])[1:]
         url_check(msg)
 
-    while 1:
+    while True:
         line = io.recv_line()
         if not line:
             continue
@@ -177,7 +177,7 @@ def parse_command_line_arguments():
     return opts
 
 opts = parse_command_line_arguments()
-while 1:
+while True:
     try:
         io = init_session(opts.server, opts.port, opts.timeout, opts.nickname,
                           opts.username, opts.CHANNEL)
