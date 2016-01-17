@@ -1,3 +1,4 @@
+import argparse
 import socket
 import datetime
 import select
@@ -6,22 +7,22 @@ import re
 import urllib.request
 import html
 
-SERVERNET = "irc.freenode.net"
+# Defaults, may be overwritten by command line arguments.
+SERVER = "irc.freenode.net"
 PORT = 6667
 TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
-CHANNEL = "#zrolaps-test"
 
 class ExceptionForRestart(Exception):
     pass
 
 class IO:
 
-    def __init__(self, servernet, port, timeout):
+    def __init__(self, server, port, timeout):
         self.timeout = timeout
         self.socket = socket.socket()
-        self.socket.connect((servernet, port))
+        self.socket.connect((server, port))
         self.socket.setblocking(0)
         self.line_buffer = []
         self.rune_buffer = ""
@@ -79,9 +80,9 @@ class IO:
             line)
         return line
 
-def init_session(servernet, port, timeout, nickname, username, channel):
-    print("CONNECTING TO " + servernet)
-    io = IO(servernet, port, timeout)
+def init_session(server, port, timeout, nickname, username, channel):
+    print("CONNECTING TO " + server)
+    io = IO(server, port, timeout)
     io.send_line("NICK " + nickname)
     io.send_line("USER " + username + " 0 * : ")
     io.send_line("JOIN " + channel)
@@ -143,11 +144,36 @@ def lineparser_loop(io, nickname):
                 act_on_privmsg(tokens)
             if tokens[0] == "PING":
                 io.send_line("PONG " + tokens[1])
+
+def parse_command_line_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-s, --server", action="store", dest="server",
+            default=SERVER,
+            help="server or server net to connect to (default: " + SERVER +
+            ")")
+    parser.add_argument("-p, --port", action="store", dest="port", type=int,
+            default=PORT, help="port to connect to (default : " + str(PORT) +
+            ")")
+    parser.add_argument("-t, --timeout", action="store", dest="timeout",
+            type=int, default=TIMEOUT,
+            help="timeout in seconds after which to attempt reconnect " +
+            "(default: " + str(TIMEOUT) + ")")
+    parser.add_argument("-u, --username", action="store", dest="username",
+            default=USERNAME, help="username to use (default: " + USERNAME +
+            ")")
+    parser.add_argument("-n, --nickname", action="store", dest="nickname",
+            default=NICKNAME, help="nickname to use (default: " + NICKNAME +
+            ")")
+    parser.add_argument("CHANNEL", action="store", help="channel to join")
+    opts, unknown = parser.parse_known_args()
+    return opts
+
+opts = parse_command_line_arguments()
 while 1:
     try:
-        io = init_session(SERVERNET, PORT, TIMEOUT, NICKNAME, USERNAME,
-                CHANNEL)
-        lineparser_loop(io, NICKNAME)
+        io = init_session(opts.server, opts.port, opts.timeout, opts.nickname,
+                opts.username, opts.CHANNEL)
+        lineparser_loop(io, opts.nickname)
     except ExceptionForRestart:
         io.socket.close()
         continue
