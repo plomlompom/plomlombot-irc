@@ -16,8 +16,10 @@ TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
 
+
 class ExceptionForRestart(Exception):
     pass
+
 
 class IO:
 
@@ -44,7 +46,7 @@ class IO:
         if len(msg.encode("utf-8")) > 510:
             print("NOT SENT LINE TO SERVER (too long): " + msg)
         print("LINE TO SERVER: "
-            + str(datetime.datetime.now()) + ": " + msg)
+              + str(datetime.datetime.now()) + ": " + msg)
         msg = msg + "\r\n"
         msg_len = len(msg)
         total_sent_len = 0
@@ -68,7 +70,7 @@ class IO:
             if len(received_runes) == 0:
                 print("SOCKET CONNECTION BROKEN")
                 raise ExceptionForRestart
-            self.rune_buffer += received_runes 
+            self.rune_buffer += received_runes
             lines_split = str.split(self.rune_buffer, "\r\n")
             self.line_buffer += lines_split[:-1]
             self.rune_buffer = lines_split[-1]
@@ -79,8 +81,9 @@ class IO:
         line = self._recv_line_wrapped(send_ping)
         if line:
             print("LINE FROM SERVER " + str(datetime.datetime.now()) + ": " +
-            line)
+                  line)
         return line
+
 
 def init_session(server, port, timeout, nickname, username, channel):
     print("CONNECTING TO " + server)
@@ -89,6 +92,7 @@ def init_session(server, port, timeout, nickname, username, channel):
     io.send_line("USER " + username + " 0 * : ")
     io.send_line("JOIN " + channel)
     return io
+
 
 def lineparser_loop(io, nickname):
 
@@ -106,18 +110,18 @@ def lineparser_loop(io, nickname):
                     continue
                 charset = webpage.info().get_content_charset()
                 if not charset:
-                    charset="utf-8"
+                    charset = "utf-8"
                 content_type = webpage.info().get_content_type()
-                if not content_type in ('text/html', 'text/xml',
-                        'application/xhtml+xml'):
+                if content_type not in ('text/html', 'text/xml',
+                                        'application/xhtml+xml'):
                     print("TROUBLE INTERPRETING URL: bad content type "
-                            + content_type)
+                          + content_type)
                     continue
                 content = webpage.read().decode(charset)
                 title = str(content).split('<title>')[1].split('</title>')[0]
                 title = html.unescape(title)
                 io.send_line("PRIVMSG " + target + " :page title for url: "
-                    + title)
+                             + title)
 
         sender = ""
         for rune in tokens[0]:
@@ -148,25 +152,26 @@ def lineparser_loop(io, nickname):
             if tokens[0] == "PING":
                 io.send_line("PONG " + tokens[1])
 
+
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("-s, --server", action="store", dest="server",
-            default=SERVER,
-            help="server or server net to connect to (default: " + SERVER +
-            ")")
+                        default=SERVER,
+                        help="server or server net to connect to (default: "
+                        + SERVER + ")")
     parser.add_argument("-p, --port", action="store", dest="port", type=int,
-            default=PORT, help="port to connect to (default : " + str(PORT) +
-            ")")
+                        default=PORT, help="port to connect to (default : "
+                        + str(PORT) + ")")
     parser.add_argument("-t, --timeout", action="store", dest="timeout",
-            type=int, default=TIMEOUT,
-            help="timeout in seconds after which to attempt reconnect " +
-            "(default: " + str(TIMEOUT) + ")")
+                        type=int, default=TIMEOUT,
+                        help="timeout in seconds after which to attempt " +
+                        "reconnect (default: " + str(TIMEOUT) + ")")
     parser.add_argument("-u, --username", action="store", dest="username",
-            default=USERNAME, help="username to use (default: " + USERNAME +
-            ")")
+                        default=USERNAME, help="username to use (default: "
+                        + USERNAME + ")")
     parser.add_argument("-n, --nickname", action="store", dest="nickname",
-            default=NICKNAME, help="nickname to use (default: " + NICKNAME +
-            ")")
+                        default=NICKNAME, help="nickname to use (default: "
+                        + NICKNAME + ")")
     parser.add_argument("CHANNEL", action="store", help="channel to join")
     opts, unknown = parser.parse_known_args()
     return opts
@@ -175,7 +180,7 @@ opts = parse_command_line_arguments()
 while 1:
     try:
         io = init_session(opts.server, opts.port, opts.timeout, opts.nickname,
-                opts.username, opts.CHANNEL)
+                          opts.username, opts.CHANNEL)
         lineparser_loop(io, opts.nickname)
     except ExceptionForRestart:
         io.socket.close()
