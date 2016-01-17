@@ -100,8 +100,8 @@ def lineparser_loop(io, nickname):
                 url = matches[i]
                 try:
                     webpage = urllib.request.urlopen(url, timeout=15)
-                except (urllib.error.HTTPError, urllib.error.URLError) \
-                    as error:
+                except (urllib.error.HTTPError, urllib.error.URLError,
+                        UnicodeError) as error:
                     print("TROUBLE FOLLOWING URL: " + str(error))
                     continue
                 charset = webpage.info().get_content_charset()
