@@ -103,6 +103,10 @@ while 1:
             for i in range(len(matches)):
                 url = matches[i]
                 webpage = urllib.request.urlopen(url)
+                content_type = webpage.info().get_content_type()
+                if not content_type in ('text/html', 'text/xml',
+                    'application/xhtml+xml'):
+                    continue
                 charset = webpage.info().get_content_charset()
                 content = webpage.read().decode(charset)
                 title = str(content).split('<title>')[1].split('</title>')[0]
