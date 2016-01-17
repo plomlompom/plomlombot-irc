@@ -9,7 +9,7 @@ import html
 servernet = "irc.freenode.net"
 port = 6667
 servername = ""
-timeout = 480
+timeout = 240
 username = "plomlombot"
 nickname = username
 channel = "#zrolaps"
