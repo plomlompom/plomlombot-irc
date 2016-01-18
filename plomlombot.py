@@ -109,7 +109,8 @@ def lineparser_loop(io, nickname):
                 try:
                     webpage = urllib.request.urlopen(request, timeout=15)
                 except (urllib.error.HTTPError, urllib.error.URLError,
-                        UnicodeError, http.client.BadStatusLine) as error:
+                        UnicodeError, http.client.BadStatusLine,
+                        UnicodeDecodeError) as error:
                     print("TROUBLE FOLLOWING URL: " + str(error))
                     continue
                 charset = webpage.info().get_content_charset()
