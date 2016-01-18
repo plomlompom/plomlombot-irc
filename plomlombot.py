@@ -100,6 +100,10 @@ def lineparser_loop(io, nickname):
     def act_on_privmsg(tokens):
 
         def url_check(msg):
+
+            def notice(msg):
+                io.send_line("NOTICE " + target + " :" + msg)
+
             matches = re.findall("(https?://[^\s>]+)", msg)
             for i in range(len(matches)):
                 url = matches[i]
@@ -109,9 +113,8 @@ def lineparser_loop(io, nickname):
                 try:
                     webpage = urllib.request.urlopen(request, timeout=15)
                 except (urllib.error.HTTPError, urllib.error.URLError,
-                        UnicodeError, http.client.BadStatusLine,
-                        UnicodeDecodeError) as error:
-                    print("TROUBLE FOLLOWING URL: " + str(error))
+                        UnicodeError, http.client.BadStatusLine) as error:
+                    notice("TROUBLE FOLLOWING URL: " + str(error))
                     continue
                 charset = webpage.info().get_content_charset()
                 if not charset:
@@ -119,14 +122,13 @@ def lineparser_loop(io, nickname):
                 content_type = webpage.info().get_content_type()
                 if content_type not in ('text/html', 'text/xml',
                                         'application/xhtml+xml'):
-                    print("TROUBLE INTERPRETING URL: bad content type "
-                          + content_type)
+                    notice("TROUBLE READING PAGE TITLE: bad content type "
+                           + content_type)
                     continue
                 content = webpage.read().decode(charset)
                 title = str(content).split('<title>')[1].split('</title>')[0]
                 title = html.unescape(title)
-                io.send_line("NOTICE " + target + " :page title for url: "
-                             + title)
+                notice("PAGE TITLE FOR URL: " + title)
 
         sender = ""
         for rune in tokens[0]:
