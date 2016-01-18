@@ -67,7 +67,11 @@ class IO:
                 self._pingtest(send_ping)
                 return None
             self.last_pong = time.time()
-            received_runes = self.socket.recv(1024).decode("UTF-8")
+            received_bytes = self.socket.recv(1024)
+            try:
+                received_runes = received_bytes.decode("UTF-8")
+            except UnicodeDecodeError:
+                received_runes = received_bytes.decode("latin1")
             if len(received_runes) == 0:
                 print("SOCKET CONNECTION BROKEN")
                 raise ExceptionForRestart
