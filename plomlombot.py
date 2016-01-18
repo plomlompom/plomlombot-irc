@@ -103,8 +103,11 @@ def lineparser_loop(io, nickname):
             matches = re.findall("(https?://[^\s>]+)", msg)
             for i in range(len(matches)):
                 url = matches[i]
+                request = urllib.request.Request(url, headers={
+                    "User-Agent": "plomlombot"
+                })
                 try:
-                    webpage = urllib.request.urlopen(url, timeout=15)
+                    webpage = urllib.request.urlopen(request, timeout=15)
                 except (urllib.error.HTTPError, urllib.error.URLError,
                         UnicodeError, http.client.BadStatusLine) as error:
                     print("TROUBLE FOLLOWING URL: " + str(error))
