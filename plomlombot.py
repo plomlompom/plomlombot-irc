@@ -122,7 +122,8 @@ def lineparser_loop(io, nickname):
                     continue
                 charset = webpage.info().get_content_charset()
                 if not charset:
-                    charset = "utf-8"
+                    notice("TROUBLE READING PAGE TITLE: no charset in header")
+                    continue
                 content_type = webpage.info().get_content_type()
                 if content_type not in ('text/html', 'text/xml',
                                         'application/xhtml+xml'):
