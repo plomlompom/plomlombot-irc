@@ -100,7 +100,7 @@ def lineparser_loop(io, nickname):
     def act_on_privmsg(tokens):
 
         def url_check(msg):
-            matches = re.findall("(https?://[^\s]+)", msg)
+            matches = re.findall("(https?://[^\s>]+)", msg)
             for i in range(len(matches)):
                 url = matches[i]
                 try:
