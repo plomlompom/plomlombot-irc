@@ -124,7 +124,7 @@ def lineparser_loop(io, nickname):
                 content = webpage.read().decode(charset)
                 title = str(content).split('<title>')[1].split('</title>')[0]
                 title = html.unescape(title)
-                io.send_line("PRIVMSG " + target + " :page title for url: "
+                io.send_line("NOTICE " + target + " :page title for url: "
                              + title)
 
         sender = ""
