@@ -7,8 +7,7 @@ import select
 import time
 import re
 import requests
-import html
-import html.parser
+import bs4
 
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
@@ -16,23 +15,6 @@ PORT = 6667
 TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
-
-
-class HTMLParser(html.parser.HTMLParser):
-    def __init__(self, html, tag):
-        super().__init__()
-        self._tag_to_check = tag
-        self._tag = ""
-        self.data = ""
-        self.feed(html)
-    def handle_starttag(self, tag, attrs):
-        if self.data == "" and tag == self._tag_to_check:
-            self._tag = tag
-    def handle_endtag(self, tag):
-        self._tag = ""
-    def handle_data(self, data):
-        if self._tag != "":
-            self.data = data
 
 
 class ExceptionForRestart(Exception):
@@ -135,10 +117,11 @@ def lineparser_loop(io, nickname):
                         requests.exceptions.InvalidSchema) as error:
                     notice("TROUBLE FOLLOWING URL: " + str(error))
                     continue
-                content = r.text
-                title = HTMLParser(content, "title").data
-                title = html.unescape(title)
-                notice("PAGE TITLE FOR URL: " + title)
+                title = bs4.BeautifulSoup(r.text).title
+                if title:
+                    notice("PAGE TITLE FOR URL: " + title.string)
+                else:
+                    notice("PAGE HAS NO TITLE TAG")
 
         sender = ""
         for rune in tokens[0]:
