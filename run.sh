@@ -12,5 +12,6 @@ pip install -r requirements.txt
 set +e
 echo
 python3 plomlombot.py "$@"
+set -e
 deactivate
 rm -rf $DIR_ENV 
