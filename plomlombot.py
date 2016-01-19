@@ -114,6 +114,7 @@ def lineparser_loop(io, nickname):
                     r = requests.get(url, timeout=15)
                 except (requests.exceptions.TooManyRedirects,
                         requests.exceptions.ConnectionError,
+                        requests.exceptions.InvalidURL,
                         requests.exceptions.InvalidSchema) as error:
                     notice("TROUBLE FOLLOWING URL: " + str(error))
                     continue
