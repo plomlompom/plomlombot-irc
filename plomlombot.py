@@ -22,11 +22,12 @@ NICKNAME = USERNAME
 class HTMLParser(html.parser.HTMLParser):
     def __init__(self, html, tag):
         super().__init__()
+        self._tag_to_check = tag
         self._tag = ""
         self.data = ""
         self.feed(html)
     def handle_starttag(self, tag, attrs):
-        if self.data == "":
+        if self.data == "" and tag == self._tag_to_check:
             self._tag = tag
     def handle_endtag(self, tag):
         self._tag = ""
