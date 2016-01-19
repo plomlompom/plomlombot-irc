@@ -1,2 +1,6 @@
-# plomlombot-irc
-irc bot
+Primitive IRC bot.
+
+Expects some external Python libraries (listed in requirements.txt). May be run
+directly if those dependencies are met. Otherwise, if at least pyvenv and pip
+are installed, run the bot via ./run.sh to set it up in a virtual environment
+into which the required libraries get installed automatically.
