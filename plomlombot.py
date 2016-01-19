@@ -120,7 +120,7 @@ def lineparser_loop(io, nickname):
                     continue
                 title = bs4.BeautifulSoup(r.text).title
                 if title:
-                    notice("PAGE TITLE FOR URL: " + title.string)
+                    notice("PAGE TITLE FOR URL: " + title.string.strip())
                 else:
                     notice("PAGE HAS NO TITLE TAG")
 
