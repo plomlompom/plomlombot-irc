@@ -6,8 +6,7 @@ import datetime
 import select
 import time
 import re
-import urllib.request
-import http.client
+import requests
 import html
 import html.parser
 
@@ -129,26 +128,14 @@ def lineparser_loop(io, nickname):
             matches = re.findall("(https?://[^\s>]+)", msg)
             for i in range(len(matches)):
                 url = matches[i]
-                request = urllib.request.Request(url, headers={
-                    "User-Agent": "plomlombot"
-                })
                 try:
-                    webpage = urllib.request.urlopen(request, timeout=15)
-                except (urllib.error.HTTPError, urllib.error.URLError,
-                        UnicodeError, http.client.BadStatusLine) as error:
+                    r = requests.get(url, timeout=15)
+                except (requests.exceptions.TooManyRedirects,
+                        requests.exceptions.ConnectionError,
+                        requests.exceptions.InvalidSchema) as error:
                     notice("TROUBLE FOLLOWING URL: " + str(error))
                     continue
-                charset = webpage.info().get_content_charset()
-                if not charset:
-                    notice("TROUBLE READING PAGE TITLE: no charset in header")
-                    continue
-                content_type = webpage.info().get_content_type()
-                if content_type not in ('text/html', 'text/xml',
-                                        'application/xhtml+xml'):
-                    notice("TROUBLE READING PAGE TITLE: bad content type "
-                           + content_type)
-                    continue
-                content = webpage.read().decode(charset)
+                content = r.text
                 title = HTMLParser(content, "title").data
                 title = html.unescape(title)
                 notice("PAGE TITLE FOR URL: " + title)
