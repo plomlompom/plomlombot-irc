@@ -11,6 +11,6 @@ source $DIR_ENV/bin/activate
 pip install -r requirements.txt
 set +e
 echo
-python3 plomlombot.py -n plomplombot "$@" 
+python3 plomlombot.py "$@"
 deactivate
 rm -rf $DIR_ENV 
