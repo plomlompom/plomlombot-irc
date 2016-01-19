@@ -9,6 +9,7 @@ import re
 import urllib.request
 import http.client
 import html
+import html.parser
 
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
@@ -16,6 +17,22 @@ PORT = 6667
 TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
+
+
+class HTMLParser(html.parser.HTMLParser):
+    def __init__(self, html, tag):
+        super().__init__()
+        self._tag = ""
+        self.data = ""
+        self.feed(html)
+    def handle_starttag(self, tag, attrs):
+        if self.data == "":
+            self._tag = tag
+    def handle_endtag(self, tag):
+        self._tag = ""
+    def handle_data(self, data):
+        if self._tag != "":
+            self.data = data
 
 
 class ExceptionForRestart(Exception):
@@ -131,7 +148,7 @@ def lineparser_loop(io, nickname):
                            + content_type)
                     continue
                 content = webpage.read().decode(charset)
-                title = str(content).split('<title>')[1].split('</title>')[0]
+                title = HTMLParser(content, "title").data
                 title = html.unescape(title)
                 notice("PAGE TITLE FOR URL: " + title)
 
