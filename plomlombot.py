@@ -8,6 +8,9 @@ import time
 import re
 import requests
 import bs4
+import random
+import hashlib
+import os
 
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
@@ -102,11 +105,10 @@ def lineparser_loop(io, nickname):
 
     def act_on_privmsg(tokens):
 
+        def notice(msg):
+            io.send_line("NOTICE " + target + " :" + msg)
+
         def url_check(msg):
-
-            def notice(msg):
-                io.send_line("NOTICE " + target + " :" + msg)
-
             matches = re.findall("(https?://[^\s>]+)", msg)
             for i in range(len(matches)):
                 url = matches[i]
@@ -124,6 +126,34 @@ def lineparser_loop(io, nickname):
                 else:
                     notice("PAGE HAS NO TITLE TAG")
 
+        def command_check(msg):
+            if msg[0] != "!":
+                return
+            tokens = msg[1:].split()
+            hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
+            quotesfile_name = "quotes_" + hash_string
+            if tokens[0] == "addquote":
+                if not os.access(quotesfile_name, os.F_OK):
+                    quotesfile = open(quotesfile_name, "w")
+                    quotesfile.write("QUOTES FOR " + target + ":\n")
+                    quotesfile.close()
+                quotesfile = open(quotesfile_name, "a")
+                quotesfile.write(str.join(" ", tokens[1:]) + "\n")
+                quotesfile.close()
+                quotesfile = open(quotesfile_name, "r")
+                lines = quotesfile.readlines()
+                quotesfile.close()
+                notice("ADDED QUOTE #" + str(len(lines) - 1))
+            elif tokens[0] == "quote":
+                if not os.access(quotesfile_name, os.F_OK):
+                    notice("NO QUOTES AVAILABLE")
+                    return
+                quotesfile = open(quotesfile_name, "r")
+                lines = quotesfile.readlines()
+                quotesfile.close()
+                i = random.randrange(len(lines) - 1) + 1
+                notice("QUOTE #" + str(i) + ": " + lines[i])
+
         sender = ""
         for rune in tokens[0]:
             if rune == "!":
@@ -140,6 +170,7 @@ def lineparser_loop(io, nickname):
         if receiver != nickname:
             target = receiver
         msg = str.join(" ", tokens[3:])[1:]
+        command_check(msg)
         url_check(msg)
 
     while True:
