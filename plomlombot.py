@@ -145,6 +145,10 @@ def lineparser_loop(io, nickname):
                 quotesfile.close()
                 notice("ADDED QUOTE #" + str(len(lines) - 1))
             elif tokens[0] == "quote":
+                if len(tokens) > 2 or \
+                    (len(tokens) == 2 and not tokens[1].isdigit()):
+                    notice("SYNTAX: !quote [int]")
+                    return
                 if not os.access(quotesfile_name, os.F_OK):
                     notice("NO QUOTES AVAILABLE")
                     return
@@ -152,7 +156,14 @@ def lineparser_loop(io, nickname):
                 lines = quotesfile.readlines()
                 quotesfile.close()
                 lines = lines[1:]
-                i = random.randrange(len(lines))
+                if len(tokens) == 2:
+                    i = int(tokens[1])
+                    if i == 0 or i > len(lines):
+                        notice("THERE'S NO QUOTE OF THAT INDEX")
+                        return
+                    i = i - 1
+                else:
+                    i = random.randrange(len(lines))
                 notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
         sender = ""
