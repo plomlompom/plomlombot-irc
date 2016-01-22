@@ -110,7 +110,7 @@ def lineparser_loop(io, nickname):
 
         def url_check(msg):
 
-            def handle_url(url):
+            def handle_url(url, show_url=False):
 
                 def mobile_twitter_hack(url):
                     re1 = 'https?://(mobile.twitter.com/)[^/]+(/status/)'
@@ -121,7 +121,7 @@ def lineparser_loop(io, nickname):
                         m = re.search(re2, url)
                         url = 'https://twitter.com/' + m.group(1) + '/status/' \
                                 + m.group(2)
-                        handle_url(url)
+                        handle_url(url, True)
                         return True
 
                 try:
@@ -136,7 +136,10 @@ def lineparser_loop(io, nickname):
                     return
                 title = bs4.BeautifulSoup(r.text).title
                 if title:
-                    notice("PAGE TITLE: " + title.string.strip())
+                    prefix = "PAGE TITLE: "
+                    if show_url:
+                        prefix = "PAGE TITLE FOR <" + url + ">: "
+                    notice(prefix + title.string.strip())
                 else:
                     notice("PAGE HAS NO TITLE TAG")
 
