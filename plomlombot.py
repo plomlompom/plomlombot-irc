@@ -151,8 +151,9 @@ def lineparser_loop(io, nickname):
                 quotesfile = open(quotesfile_name, "r")
                 lines = quotesfile.readlines()
                 quotesfile.close()
-                i = random.randrange(len(lines) - 1) + 1
-                notice("QUOTE #" + str(i) + ": " + lines[i])
+                lines = lines[1:]
+                i = random.randrange(len(lines))
+                notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
         sender = ""
         for rune in tokens[0]:
