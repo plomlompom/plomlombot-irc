@@ -109,9 +109,21 @@ def lineparser_loop(io, nickname):
             io.send_line("NOTICE " + target + " :" + msg)
 
         def url_check(msg):
-            matches = re.findall("(https?://[^\s>]+)", msg)
-            for i in range(len(matches)):
-                url = matches[i]
+
+            def handle_url(url):
+
+                def mobile_twitter_hack(url):
+                    re1 = 'https?://(mobile.twitter.com/)[^/]+(/status/)'
+                    re2 = 'https?://mobile.twitter.com/([^/]+)/status/([^\?]+)'
+                    m = re.search(re1, url)
+                    if m and m.group(1) == 'mobile.twitter.com/' \
+                            and m.group(2) == '/status/':
+                        m = re.search(re2, url)
+                        url = 'https://twitter.com/' + m.group(1) + '/status/' \
+                                + m.group(2)
+                        handle_url(url)
+                        return True
+
                 try:
                     r = requests.get(url, timeout=15)
                 except (requests.exceptions.TooManyRedirects,
@@ -119,12 +131,18 @@ def lineparser_loop(io, nickname):
                         requests.exceptions.InvalidURL,
                         requests.exceptions.InvalidSchema) as error:
                     notice("TROUBLE FOLLOWING URL: " + str(error))
-                    continue
+                    return
+                if mobile_twitter_hack(url):
+                    return
                 title = bs4.BeautifulSoup(r.text).title
                 if title:
                     notice("PAGE TITLE: " + title.string.strip())
                 else:
                     notice("PAGE HAS NO TITLE TAG")
+
+            matches = re.findall("(https?://[^\s>]+)", msg)
+            for i in range(len(matches)):
+                handle_url(matches[i])
 
         def command_check(msg):
             if msg[0] != "!":
