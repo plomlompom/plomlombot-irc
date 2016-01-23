@@ -11,6 +11,7 @@ import bs4
 import random
 import hashlib
 import os
+import plomsearch
 
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
@@ -167,9 +168,16 @@ def lineparser_loop(io, nickname):
                 quotesfile.close()
                 notice("ADDED QUOTE #" + str(len(lines) - 1))
             elif tokens[0] == "quote":
-                if len(tokens) > 2 or \
+                if (len(tokens) > 2 and tokens[1] != "search") or \
+                    (len(tokens) < 3 and tokens[1] == "search") or \
                     (len(tokens) == 2 and not tokens[1].isdigit()):
-                    notice("SYNTAX: !quote [int]")
+                    notice("SYNTAX: !quote [int] OR !quote search QUERY")
+                    notice("QUERY may be a boolean grouping of quoted or "\
+                        + "unquoted search terms, examples:")
+                    notice("!quote search foo")
+                    notice("!quote search foo AND (bar OR NOT baz)")
+                    notice("!quote search \"foo\\\"bar\" AND "\
+                            + "('NOT\"' AND \"'foo'\" OR 'bar\\'baz')")
                     return
                 if not os.access(quotesfile_name, os.F_OK):
                     notice("NO QUOTES AVAILABLE")
@@ -184,6 +192,20 @@ def lineparser_loop(io, nickname):
                         notice("THERE'S NO QUOTE OF THAT INDEX")
                         return
                     i = i - 1
+                elif len(tokens) > 2:
+                    query = str.join(" ", tokens[2:])
+                    try:
+                        results = plomsearch.search(query, lines)
+                    except plomsearch.LogicParserError as err:
+                        notice("FAILED QUERY PARSING: " + str(err))
+                        return
+                    if len(results) == 0:
+                        notice("NO QUOTES MATCHING QUERY")
+                    else:
+                        for result in results:
+                            notice("QUOTE #" + str(result[0] + 1) + " : "
+                                + result[1])
+                    return
                 else:
                     i = random.randrange(len(lines))
                 notice("QUOTE #" + str(i + 1) + ": " + lines[i])
