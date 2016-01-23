@@ -9,6 +9,7 @@ DIR_ENV=.temp_env
 pyvenv $DIR_ENV 
 source $DIR_ENV/bin/activate
 pip install -r requirements.txt
+#pip install -r requirements2.txt
 echo
 set +e
 python3 plomlombot.py "$@"

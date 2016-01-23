@@ -114,7 +114,8 @@ def lineparser_loop(io, nickname):
 
                 def mobile_twitter_hack(url):
                     re1 = 'https?://(mobile.twitter.com/)[^/]+(/status/)'
-                    re2 = 'https?://mobile.twitter.com/([^/]+)/status/([^\?]+)'
+                    re2 = 'https?://mobile.twitter.com/([^/]+)/status/' \
+                        + '([^\?/]+)'
                     m = re.search(re1, url)
                     if m and m.group(1) == 'mobile.twitter.com/' \
                             and m.group(2) == '/status/':
