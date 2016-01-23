@@ -14,7 +14,7 @@ def parseToCompoundStatement(string):
     quotes = "'\""
     escape = '\\'
     space = " "
-    meta_marker = "\n"
+    meta_marker = "\0"
     not_words = ["NOT"]
     and_words = ["AND"]
     or_words = ["OR"]
