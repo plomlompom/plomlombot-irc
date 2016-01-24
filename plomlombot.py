@@ -169,8 +169,8 @@ def lineparser_loop(io, nickname):
                 notice("ADDED QUOTE #" + str(len(lines) - 1))
             elif tokens[0] == "quote":
                 if (len(tokens) > 2 and tokens[1] != "search") or \
-                    (len(tokens) < 3 and tokens[1] == "search") or \
-                    (len(tokens) == 2 and not tokens[1].isdigit()):
+                    (len(tokens) == 2 and
+                        (tokens[1] == "search" or not tokens[1].isdigit())):
                     notice("SYNTAX: !quote [int] OR !quote search QUERY")
                     notice("QUERY may be a boolean grouping of quoted or "\
                         + "unquoted search terms, examples:")
