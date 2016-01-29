@@ -93,152 +93,166 @@ class IO:
         return line
 
 
-def init_session(server, port, timeout, nickname, username, channel):
-    print("CONNECTING TO " + server)
-    io = IO(server, port, timeout)
-    io.send_line("NICK " + nickname)
-    io.send_line("USER " + username + " 0 * : ")
-    io.send_line("JOIN " + channel)
-    return io
+def handle_command(command, argument, notice, target):
+    hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
+    quotesfile_name = "quotes_" + hash_string
 
+    def addquote():
+        if not os.access(quotesfile_name, os.F_OK):
+            quotesfile = open(quotesfile_name, "w")
+            quotesfile.write("QUOTES FOR " + target + ":\n")
+            quotesfile.close()
+        quotesfile = open(quotesfile_name, "a")
+        quotesfile.write(argument + "\n")
+        quotesfile.close()
+        quotesfile = open(quotesfile_name, "r")
+        lines = quotesfile.readlines()
+        quotesfile.close()
+        notice("ADDED QUOTE #" + str(len(lines) - 1))
 
-def lineparser_loop(io, nickname):
+    def quote():
 
-    def act_on_privmsg(tokens):
+        def help():
+            notice("SYNTAX: !quote [int] OR !quote search QUERY")
+            notice("QUERY may be a boolean grouping of quoted or unquoted " +
+                   "search terms, examples:")
+            notice("!quote search foo")
+            notice("!quote search foo AND (bar OR NOT baz)")
+            notice("!quote search \"foo\\\"bar\" AND ('NOT\"' AND \"'foo'\"" +
+                   " OR 'bar\\'baz')")
 
-        def notice(msg):
-            io.send_line("NOTICE " + target + " :" + msg)
-
-        def url_check(msg):
-
-            def handle_url(url, show_url=False):
-
-                def mobile_twitter_hack(url):
-                    re1 = 'https?://(mobile.twitter.com/)[^/]+(/status/)'
-                    re2 = 'https?://mobile.twitter.com/([^/]+)/status/' \
-                        + '([^\?/]+)'
-                    m = re.search(re1, url)
-                    if m and m.group(1) == 'mobile.twitter.com/' \
-                            and m.group(2) == '/status/':
-                        m = re.search(re2, url)
-                        url = 'https://twitter.com/' + m.group(1) + '/status/' \
-                                + m.group(2)
-                        handle_url(url, True)
-                        return True
-
-                try:
-                    r = requests.get(url, timeout=15)
-                except (requests.exceptions.TooManyRedirects,
-                        requests.exceptions.ConnectionError,
-                        requests.exceptions.InvalidURL,
-                        requests.exceptions.InvalidSchema) as error:
-                    notice("TROUBLE FOLLOWING URL: " + str(error))
-                    return
-                if mobile_twitter_hack(url):
-                    return
-                title = bs4.BeautifulSoup(r.text).title
-                if title:
-                    prefix = "PAGE TITLE: "
-                    if show_url:
-                        prefix = "PAGE TITLE FOR <" + url + ">: "
-                    notice(prefix + title.string.strip())
-                else:
-                    notice("PAGE HAS NO TITLE TAG")
-
-            matches = re.findall("(https?://[^\s>]+)", msg)
-            for i in range(len(matches)):
-                handle_url(matches[i])
-
-        def command_check(msg):
-            if msg[0] != "!":
+        if "" == argument:
+            tokens = []
+        else:
+            tokens = argument.split(" ")
+        if (len(tokens) > 1 and tokens[0] != "search") or \
+            (len(tokens) == 1 and
+                (tokens[0] == "search" or not tokens[0].isdigit())):
+            help()
+            return
+        if not os.access(quotesfile_name, os.F_OK):
+            notice("NO QUOTES AVAILABLE")
+            return
+        quotesfile = open(quotesfile_name, "r")
+        lines = quotesfile.readlines()
+        quotesfile.close()
+        lines = lines[1:]
+        if len(tokens) == 1:
+            i = int(tokens[0])
+            if i == 0 or i > len(lines):
+                notice("THERE'S NO QUOTE OF THAT INDEX")
                 return
-            tokens = msg[1:].split()
-            hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-            quotesfile_name = "quotes_" + hash_string
-            if tokens[0] == "addquote":
-                if not os.access(quotesfile_name, os.F_OK):
-                    quotesfile = open(quotesfile_name, "w")
-                    quotesfile.write("QUOTES FOR " + target + ":\n")
-                    quotesfile.close()
-                quotesfile = open(quotesfile_name, "a")
-                quotesfile.write(str.join(" ", tokens[1:]) + "\n")
-                quotesfile.close()
-                quotesfile = open(quotesfile_name, "r")
-                lines = quotesfile.readlines()
-                quotesfile.close()
-                notice("ADDED QUOTE #" + str(len(lines) - 1))
-            elif tokens[0] == "quote":
-                if (len(tokens) > 2 and tokens[1] != "search") or \
-                    (len(tokens) == 2 and
-                        (tokens[1] == "search" or not tokens[1].isdigit())):
-                    notice("SYNTAX: !quote [int] OR !quote search QUERY")
-                    notice("QUERY may be a boolean grouping of quoted or "\
-                        + "unquoted search terms, examples:")
-                    notice("!quote search foo")
-                    notice("!quote search foo AND (bar OR NOT baz)")
-                    notice("!quote search \"foo\\\"bar\" AND "\
-                            + "('NOT\"' AND \"'foo'\" OR 'bar\\'baz')")
-                    return
-                if not os.access(quotesfile_name, os.F_OK):
-                    notice("NO QUOTES AVAILABLE")
-                    return
-                quotesfile = open(quotesfile_name, "r")
-                lines = quotesfile.readlines()
-                quotesfile.close()
-                lines = lines[1:]
-                if len(tokens) == 2:
-                    i = int(tokens[1])
-                    if i == 0 or i > len(lines):
-                        notice("THERE'S NO QUOTE OF THAT INDEX")
-                        return
-                    i = i - 1
-                elif len(tokens) > 2:
-                    query = str.join(" ", tokens[2:])
-                    try:
-                        results = plomsearch.search(query, lines)
-                    except plomsearch.LogicParserError as err:
-                        notice("FAILED QUERY PARSING: " + str(err))
-                        return
-                    if len(results) == 0:
-                        notice("NO QUOTES MATCHING QUERY")
-                    else:
-                        for result in results:
-                            notice("QUOTE #" + str(result[0] + 1) + " : "
-                                + result[1])
-                    return
-                else:
-                    i = random.randrange(len(lines))
-                notice("QUOTE #" + str(i + 1) + ": " + lines[i])
+            i = i - 1
+        elif len(tokens) > 1:
+            query = str.join(" ", tokens[1:])
+            try:
+                results = plomsearch.search(query, lines)
+            except plomsearch.LogicParserError as err:
+                notice("FAILED QUERY PARSING: " + str(err))
+                return
+            if len(results) == 0:
+                notice("NO QUOTES MATCHING QUERY")
+            else:
+                for result in results:
+                    notice("QUOTE #" + str(result[0] + 1) + " : " + result[1])
+            return
+        else:
+            i = random.randrange(len(lines))
+        notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
-        sender = ""
-        for rune in tokens[0]:
-            if rune == "!":
-                break
-            if rune != ":":
-                sender += rune
-        receiver = ""
-        for rune in tokens[2]:
-            if rune == "!":
-                break
-            if rune != ":":
-                receiver += rune
-        target = sender
-        if receiver != nickname:
-            target = receiver
-        msg = str.join(" ", tokens[3:])[1:]
-        command_check(msg)
-        url_check(msg)
+    if "addquote" == command:
+        addquote()
+    elif "quote" == command:
+        quote()
 
-    while True:
-        line = io.recv_line()
-        if not line:
-            continue
-        tokens = line.split(" ")
-        if len(tokens) > 1:
-            if tokens[1] == "PRIVMSG":
-                act_on_privmsg(tokens)
-            if tokens[0] == "PING":
-                io.send_line("PONG " + tokens[1])
+
+def handle_url(url, notice, show_url=False):
+
+    def mobile_twitter_hack(url):
+        re1 = 'https?://(mobile.twitter.com/)[^/]+(/status/)'
+        re2 = 'https?://mobile.twitter.com/([^/]+)/status/([^\?/]+)'
+        m = re.search(re1, url)
+        if m and m.group(1) == 'mobile.twitter.com/' \
+                and m.group(2) == '/status/':
+            m = re.search(re2, url)
+            url = 'https://twitter.com/' + m.group(1) + '/status/' + m.group(2)
+            handle_url(url, notice, True)
+            return True
+
+    try:
+        r = requests.get(url, timeout=15)
+    except (requests.exceptions.TooManyRedirects,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.InvalidURL,
+            requests.exceptions.InvalidSchema) as error:
+        notice("TROUBLE FOLLOWING URL: " + str(error))
+        return
+    if mobile_twitter_hack(url):
+        return
+    title = bs4.BeautifulSoup(r.text).title
+    if title:
+        prefix = "PAGE TITLE: "
+        if show_url:
+            prefix = "PAGE TITLE FOR <" + url + ">: "
+        notice(prefix + title.string.strip())
+    else:
+        notice("PAGE HAS NO TITLE TAG")
+
+
+class Session:
+
+    def __init__(self, io, username, nickname, channel):
+        self.io = io
+        self.nickname = nickname
+        self.io.send_line("NICK " + self.nickname)
+        self.io.send_line("USER " + username + " 0 * : ")
+        self.io.send_line("JOIN " + channel)
+
+    def loop(self):
+
+        def handle_privmsg(tokens):
+
+            def handle_input(msg, target):
+
+                def notice(msg):
+                    self.io.send_line("NOTICE " + target + " :" + msg)
+
+                matches = re.findall("(https?://[^\s>]+)", msg)
+                for i in range(len(matches)):
+                    handle_url(matches[i], notice)
+                if "!" == msg[0]:
+                    tokens = msg[1:].split()
+                    argument = str.join(" ", tokens[1:])
+                    handle_command(tokens[0], argument, notice, target)
+
+            sender = ""
+            for rune in tokens[0]:
+                if rune == "!":
+                    break
+                if rune != ":":
+                    sender += rune
+            receiver = ""
+            for rune in tokens[2]:
+                if rune == "!":
+                    break
+                if rune != ":":
+                    receiver += rune
+            target = sender
+            if receiver != self.nickname:
+                target = receiver
+            msg = str.join(" ", tokens[3:])[1:]
+            handle_input(msg, target)
+
+        while True:
+            line = self.io.recv_line()
+            if not line:
+                continue
+            tokens = line.split(" ")
+            if len(tokens) > 1:
+                if tokens[0] == "PING":
+                    self.io.send_line("PONG " + tokens[1])
+                elif tokens[1] == "PRIVMSG":
+                    handle_privmsg(tokens)
 
 
 def parse_command_line_arguments():
@@ -264,12 +278,13 @@ def parse_command_line_arguments():
     opts, unknown = parser.parse_known_args()
     return opts
 
+
 opts = parse_command_line_arguments()
 while True:
     try:
-        io = init_session(opts.server, opts.port, opts.timeout, opts.nickname,
-                          opts.username, opts.CHANNEL)
-        lineparser_loop(io, opts.nickname)
+        io = IO(opts.server, opts.port, opts.timeout)
+        session = Session(io, opts.username, opts.nickname, opts.CHANNEL)
+        session.loop()
     except ExceptionForRestart:
         io.socket.close()
         continue
