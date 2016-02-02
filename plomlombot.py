@@ -209,7 +209,7 @@ def handle_command(command, argument, notice, target):
         msg = ""
         while 1:
             new_end = markov(snippet)
-            if len(msg) + len(new_end) > 400:
+            if len(msg) + len(new_end) > 200:
                 break
             msg += new_end + " "
             for i in range(select_length - 1):
