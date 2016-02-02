@@ -160,10 +160,69 @@ def handle_command(command, argument, notice, target):
             i = random.randrange(len(lines))
         notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
+    def markov():
+        from random import shuffle
+        select_length = 2
+        selections = []
+
+        def markov(snippet):
+            usable_selections = []
+            for i in range(select_length, 0, -1):
+                for selection in selections:
+                    add = True
+                    for j in range(i):
+                        if snippet[j] != selection[j]:
+                            add = False
+                            break
+                    if add:
+                        usable_selections += [selection]
+                if [] != usable_selections:
+                    break
+            if [] == usable_selections:
+                usable_selections = selections
+            shuffle(usable_selections)
+            return usable_selections[0][select_length]
+
+        hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
+        markovfeed_name = "markovfeed_" + hash_string
+        if not os.access(markovfeed_name, os.F_OK):
+            notice("NOT ENOUGH TEXT TO MARKOV.")
+            return
+        file = open(markovfeed_name, "r")
+        lines = file.readlines()
+        file.close()
+        tokens = []
+        for line in lines:
+            line = line.replace("\n", "")
+            tokens += line.split()
+        if len(tokens) <= select_length:
+            notice("NOT ENOUGH TEXT TO MARKOV.")
+            return
+        for i in range(len(tokens) - select_length):
+            token_list = []
+            for j in range(select_length + 1):
+                token_list += [tokens[i + j]]
+            selections += [token_list]
+        snippet = []
+        for i in range(select_length):
+            snippet += [""]
+        msg = ""
+        while 1:
+            new_end = markov(snippet)
+            if len(msg) + len(new_end) > 400:
+                break
+            msg += new_end + " "
+            for i in range(select_length - 1):
+                snippet[i] = snippet[i + 1]
+            snippet[select_length - 1] = new_end
+        notice(msg.lower() + "malkovich.")
+
     if "addquote" == command:
         addquote()
     elif "quote" == command:
         quote()
+    elif "markov" == command:
+        markov()
 
 
 def handle_url(url, notice, show_url=False):
@@ -224,6 +283,12 @@ class Session:
                     tokens = msg[1:].split()
                     argument = str.join(" ", tokens[1:])
                     handle_command(tokens[0], argument, notice, target)
+                    return
+                hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
+                markovfeed_name = "markovfeed_" + hash_string
+                file = open(markovfeed_name, "a")
+                file.write(msg + "\n")
+                file.close()
 
             sender = ""
             for rune in tokens[0]:
