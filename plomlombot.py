@@ -93,7 +93,7 @@ class IO:
         return line
 
 
-def handle_command(command, argument, notice, target):
+def handle_command(command, argument, notice, target, session):
     hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
     quotesfile_name = "quotes_" + hash_string
 
@@ -183,6 +183,15 @@ def handle_command(command, argument, notice, target):
             shuffle(usable_selections)
             return usable_selections[0][select_length]
 
+        def purge_present_users(tokens):
+            for name in session.uses_in_chan:
+                while True:
+                    try:
+                        del(tokens[tokens.index(name)])
+                    except ValueError:
+                        break
+            return tokens
+
         hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
         markovfeed_name = "markovfeed_" + hash_string
         if not os.access(markovfeed_name, os.F_OK):
@@ -195,6 +204,7 @@ def handle_command(command, argument, notice, target):
         for line in lines:
             line = line.replace("\n", "")
             tokens += line.split()
+        tokens = purge_present_users(tokens)
         if len(tokens) <= select_length:
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
@@ -263,9 +273,11 @@ class Session:
     def __init__(self, io, username, nickname, channel):
         self.io = io
         self.nickname = nickname
+        self.channel = channel
+        self.uses_in_chan = []
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
-        self.io.send_line("JOIN " + channel)
+        self.io.send_line("JOIN " + self.channel)
 
     def loop(self):
 
@@ -282,7 +294,7 @@ class Session:
                 if "!" == msg[0]:
                     tokens = msg[1:].split()
                     argument = str.join(" ", tokens[1:])
-                    handle_command(tokens[0], argument, notice, target)
+                    handle_command(tokens[0], argument, notice, target, self)
                     return
                 hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
                 markovfeed_name = "markovfeed_" + hash_string
@@ -308,6 +320,14 @@ class Session:
             msg = str.join(" ", tokens[3:])[1:]
             handle_input(msg, target)
 
+        def name_from_join_or_part(tokens):
+            token = tokens[0][1:]
+            index_cut = token.find("@")
+            index_ex = token.find("!")
+            if index_ex > 0 and index_ex < index_cut:
+                index_cut = index_ex
+            return token[:index_cut]
+
         while True:
             line = self.io.recv_line()
             if not line:
@@ -318,7 +338,17 @@ class Session:
                     self.io.send_line("PONG " + tokens[1])
                 elif tokens[1] == "PRIVMSG":
                     handle_privmsg(tokens)
-
+                elif tokens[1] == "353":
+                    names = tokens[5:]
+                    names[0] = names[0][1:]
+                    self.uses_in_chan += names
+                elif tokens[1] == "JOIN":
+                    name = name_from_join_or_part(tokens)
+                    if name != self.nickname:
+                        self.uses_in_chan += [name]
+                elif tokens[1] == "PART":
+                    name = name_from_join_or_part(tokens)
+                    del(self.uses_in_chan[self.uses_in_chan.index(name)])
 
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser()
