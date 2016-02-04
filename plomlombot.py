@@ -192,7 +192,7 @@ def handle_command(command, argument, notice, target, session):
             for name in session.uses_in_chan:
                 while True:
                     try:
-                        del(tokens[tokens.index(name)])
+                        del(tokens[tokens.index(name.lower())])
                     except ValueError:
                         break
             return tokens
@@ -207,7 +207,7 @@ def handle_command(command, argument, notice, target, session):
         file.close()
         tokens = []
         for line in lines:
-            line = line.replace("\n", "")
+            line = line.replace("\n", "").lower()
             tokens += line.split()
         tokens = purge_undesired(tokens)
         if len(tokens) <= select_length:
@@ -230,7 +230,7 @@ def handle_command(command, argument, notice, target, session):
             for i in range(select_length - 1):
                 snippet[i] = snippet[i + 1]
             snippet[select_length - 1] = new_end
-        notice(msg.lower() + "malkovich.")
+        notice(msg + "malkovich.")
 
     if "addquote" == command:
         addquote()
