@@ -13,6 +13,8 @@ import hashlib
 import os
 import plomsearch
 
+URLREGEX = "(https?://[^\s>]+)"
+
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
 PORT = 6667
@@ -183,7 +185,10 @@ def handle_command(command, argument, notice, target, session):
             shuffle(usable_selections)
             return usable_selections[0][select_length]
 
-        def purge_present_users(tokens):
+        def purge_undesired(tokens):
+            for token in tokens:
+                if None != re.match("^" + URLREGEX, token):
+                    del(tokens[tokens.index(token)])
             for name in session.uses_in_chan:
                 while True:
                     try:
@@ -204,7 +209,7 @@ def handle_command(command, argument, notice, target, session):
         for line in lines:
             line = line.replace("\n", "")
             tokens += line.split()
-        tokens = purge_present_users(tokens)
+        tokens = purge_undesired(tokens)
         if len(tokens) <= select_length:
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
@@ -288,7 +293,7 @@ class Session:
                 def notice(msg):
                     self.io.send_line("NOTICE " + target + " :" + msg)
 
-                matches = re.findall("(https?://[^\s>]+)", msg)
+                matches = re.findall(URLREGEX, msg)
                 for i in range(len(matches)):
                     handle_url(matches[i], notice)
                 if "!" == msg[0]:
