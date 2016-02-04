@@ -185,14 +185,14 @@ def handle_command(command, argument, notice, target, session):
             shuffle(usable_selections)
             return usable_selections[0][select_length]
 
-        def purge_undesired(tokens):
-            for token in tokens:
-                if None != re.match("^" + URLREGEX, token):
-                    del(tokens[tokens.index(token)])
+        def malkovich_undesired(tokens):
+            #for token in tokens:
+            #    if None != re.match("^" + URLREGEX, token):
+            #        del(tokens[tokens.index(token)])
             for name in session.uses_in_chan:
                 while True:
                     try:
-                        del(tokens[tokens.index(name.lower())])
+                        tokens[tokens.index(name.lower())] = "malkovich"
                     except ValueError:
                         break
             return tokens
@@ -209,7 +209,7 @@ def handle_command(command, argument, notice, target, session):
         for line in lines:
             line = line.replace("\n", "").lower()
             tokens += line.split()
-        tokens = purge_undesired(tokens)
+        tokens = malkovich_undesired(tokens)
         if len(tokens) <= select_length:
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
