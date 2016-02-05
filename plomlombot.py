@@ -246,7 +246,7 @@ def handle_command(command, argument, notice, target, session):
     def twt():
         def try_open(mode):
             try:
-                twtfile = open(session.twtfile, "w")
+                twtfile = open(session.twtfile, mode)
             except (PermissionError, FileNotFoundError) as err:
                 notice("CAN'T ACCESS OR CREATE TWT FILE: " + str(err))
                 return None
