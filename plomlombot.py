@@ -162,7 +162,7 @@ def handle_command(command, argument, notice, target, session):
         notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
     def markov():
-        from random import choice
+        from random import choice, shuffle
         select_length = 2
         selections = []
 
@@ -196,9 +196,10 @@ def handle_command(command, argument, notice, target, session):
         lines = file.readlines()
         file.close()
         tokens = []
+        sentence_end_markers = ".!?)("
         for line in lines:
             line = line.lower().replace("\n", "")
-            if line[-1] not in ".!?":
+            if line[-1] not in sentence_end_markers:
                 line += "."
             tokens += line.split()
         if len(tokens) <= select_length:
@@ -225,6 +226,7 @@ def handle_command(command, argument, notice, target, session):
 
         # For each snippet of select_length, use markov() to find continuation
         # token from selections. Replace present users' names with malkovich.
+        # Start snippets with the beginning of a sentence, if possible.
         for i in range(len(tokens) - select_length):
             token_list = []
             for j in range(select_length + 1):
@@ -233,6 +235,12 @@ def handle_command(command, argument, notice, target, session):
         snippet = []
         for i in range(select_length):
             snippet += [""]
+        shuffle(selections)
+        for i in range(len(selections)):
+            if selections[i][0][-1] in sentence_end_markers:
+                for i in range(select_length):
+                    snippet[i] = selections[i][i + 1]
+                break
         msg = ""
         malkovich = "malkovich"
         while 1:
