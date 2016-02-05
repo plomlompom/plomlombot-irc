@@ -19,6 +19,7 @@ PORT = 6667
 TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
+TWTFILE = ""
 
 
 class ExceptionForRestart(Exception):
@@ -242,12 +243,36 @@ def handle_command(command, argument, notice, target, session):
             msg = msg.replace(url_escape, choice(urls), 1)
         notice(msg + "malkovich.")
 
+    def twt():
+        def try_open(mode):
+            try:
+                twtfile = open(session.twtfile, "w")
+            except PermissionError, FileNotFoundError:
+                notice("CAN'T ACCESS OR CREATE TWT FILE.")
+                return None
+            return twtfile
+
+        from datetime import datetime
+        if not os.access(path, os.F_OK):
+            twtfile = try_open("w")
+            if None == twtfile:
+                return
+            twtfile.close()
+        twtfile = try_open("a")
+        if None == twtfile:
+            return
+        twtfile.write(datetime.utcnow().isoformat() + "\t" + argument + "\n")
+        twtfile.close()
+        notice("WROTE TWT.")
+
     if "addquote" == command:
         addquote()
     elif "quote" == command:
         quote()
     elif "markov" == command:
         markov()
+    elif "twt" == command:
+        twt()
 
 
 def handle_url(url, notice, show_url=False):
@@ -285,11 +310,12 @@ def handle_url(url, notice, show_url=False):
 
 class Session:
 
-    def __init__(self, io, username, nickname, channel):
+    def __init__(self, io, username, nickname, channel, twtfile):
         self.io = io
         self.nickname = nickname
         self.channel = channel
         self.uses_in_chan = []
+        self.twtfile = twtfile
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
@@ -374,7 +400,7 @@ def parse_command_line_arguments():
     parser.add_argument("-p, --port", action="store", dest="port", type=int,
                         default=PORT, help="port to connect to (default : "
                         + str(PORT) + ")")
-    parser.add_argument("-t, --timeout", action="store", dest="timeout",
+    parser.add_argument("-w, --wait", action="store", dest="timeout",
                         type=int, default=TIMEOUT,
                         help="timeout in seconds after which to attempt " +
                         "reconnect (default: " + str(TIMEOUT) + ")")
@@ -384,6 +410,9 @@ def parse_command_line_arguments():
     parser.add_argument("-n, --nickname", action="store", dest="nickname",
                         default=NICKNAME, help="nickname to use (default: "
                         + NICKNAME + ")")
+    parser.add_argument("-t, --twtfile", action="store", dest="twtfile",
+                        default=TWTFILE, help="twtfile to use (default: "
+                        + TWTFILE + ")")
     parser.add_argument("CHANNEL", action="store", help="channel to join")
     opts, unknown = parser.parse_known_args()
     return opts
@@ -393,7 +422,8 @@ opts = parse_command_line_arguments()
 while True:
     try:
         io = IO(opts.server, opts.port, opts.timeout)
-        session = Session(io, opts.username, opts.nickname, opts.CHANNEL)
+        session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
+            opts.twtfile)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
