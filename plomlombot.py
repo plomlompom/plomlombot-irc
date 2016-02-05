@@ -293,6 +293,7 @@ def handle_url(url, notice, show_url=False):
     except (requests.exceptions.TooManyRedirects,
             requests.exceptions.ConnectionError,
             requests.exceptions.InvalidURL,
+            UnicodeError,
             requests.exceptions.InvalidSchema) as error:
         notice("TROUBLE FOLLOWING URL: " + str(error))
         return
