@@ -226,7 +226,7 @@ def handle_command(command, argument, notice, target, session):
         msg = ""
         while 1:
             new_end = markov(snippet)
-            for name in session.uses_in_chan:
+            for name in session.users_in_chan:
                 if new_end[:len(name)] == name.lower():
                     new_end = "malkovich" + new_end[len(name):]
                     break
@@ -314,7 +314,7 @@ class Session:
         self.io = io
         self.nickname = nickname
         self.channel = channel
-        self.uses_in_chan = []
+        self.users_in_chan = []
         self.twtfile = twtfile
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
@@ -382,14 +382,14 @@ class Session:
                 elif tokens[1] == "353":
                     names = tokens[5:]
                     names[0] = names[0][1:]
-                    self.uses_in_chan += names
+                    self.users_in_chan += names
                 elif tokens[1] == "JOIN":
                     name = name_from_join_or_part(tokens)
                     if name != self.nickname:
-                        self.uses_in_chan += [name]
+                        self.users_in_chan += [name]
                 elif tokens[1] == "PART":
                     name = name_from_join_or_part(tokens)
-                    del(self.uses_in_chan[self.uses_in_chan.index(name)])
+                    del(self.users_in_chan[self.users_in_chan.index(name)])
 
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser()
