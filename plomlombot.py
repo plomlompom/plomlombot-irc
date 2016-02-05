@@ -190,16 +190,23 @@ def handle_command(command, argument, notice, target, session):
         if not os.access(markovfeed_name, os.F_OK):
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
+
+        # Lowercase incoming lines, ensure they end in a sentence end mark.
         file = open(markovfeed_name, "r")
         lines = file.readlines()
         file.close()
         tokens = []
         for line in lines:
-            line = line.replace("\n", "").lower()
+            line = line.lower().replace("\n", "")
+            if line[-1] not in ".!?":
+                line += "."
             tokens += line.split()
         if len(tokens) <= select_length:
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
+
+        # Replace URLs with escape string for now, so that the Markov selector
+        # won't see them as different strings. Stash replaced URLs in urls.
         urls = []
         url_escape = "\nURL"
         url_starts = ["http://", "https://", "<http://", "<https://"]
@@ -215,6 +222,9 @@ def handle_command(command, argument, notice, target, session):
                     urls += [tokens[i][:length]]
                     tokens[i] = url_escape + tokens[i][length:]
                     break
+
+        # For each snippet of select_length, use markov() to find continuation
+        # token from selections. Replace present users' names with malkovich.
         for i in range(len(tokens) - select_length):
             token_list = []
             for j in range(select_length + 1):
@@ -224,11 +234,12 @@ def handle_command(command, argument, notice, target, session):
         for i in range(select_length):
             snippet += [""]
         msg = ""
+        malkovich = "malkovich"
         while 1:
             new_end = markov(snippet)
             for name in session.users_in_chan:
                 if new_end[:len(name)] == name.lower():
-                    new_end = "malkovich" + new_end[len(name):]
+                    new_end = malkovich + new_end[len(name):]
                     break
             if len(msg) + len(new_end) > 200:
                 break
@@ -236,12 +247,16 @@ def handle_command(command, argument, notice, target, session):
             for i in range(select_length - 1):
                 snippet[i] = snippet[i + 1]
             snippet[select_length - 1] = new_end
+
+        # Replace occurences of url escape string with random choice from urls.
         while True:
             index = msg.find(url_escape)
             if index < 0:
                 break
             msg = msg.replace(url_escape, choice(urls), 1)
-        notice(msg + "malkovich.")
+
+        # More meaningful ways to randomly end sentences.
+        notice(msg + malkovich + ".")
 
     def twt():
         def try_open(mode):
