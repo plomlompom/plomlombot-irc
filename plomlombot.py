@@ -247,13 +247,13 @@ def handle_command(command, argument, notice, target, session):
         def try_open(mode):
             try:
                 twtfile = open(session.twtfile, "w")
-            except PermissionError, FileNotFoundError:
-                notice("CAN'T ACCESS OR CREATE TWT FILE.")
+            except (PermissionError, FileNotFoundError) as err:
+                notice("CAN'T ACCESS OR CREATE TWT FILE: " + str(err))
                 return None
             return twtfile
 
         from datetime import datetime
-        if not os.access(path, os.F_OK):
+        if not os.access(session.twtfile, os.F_OK):
             twtfile = try_open("w")
             if None == twtfile:
                 return
