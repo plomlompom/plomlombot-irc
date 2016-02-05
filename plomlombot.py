@@ -13,8 +13,6 @@ import hashlib
 import os
 import plomsearch
 
-URLREGEX = "(https?://[^\s>]+)"
-
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
 PORT = 6667
@@ -163,7 +161,7 @@ def handle_command(command, argument, notice, target, session):
         notice("QUOTE #" + str(i + 1) + ": " + lines[i])
 
     def markov():
-        from random import shuffle
+        from random import choice
         select_length = 2
         selections = []
 
@@ -173,7 +171,8 @@ def handle_command(command, argument, notice, target, session):
                 for selection in selections:
                     add = True
                     for j in range(i):
-                        if snippet[j] != selection[j]:
+                        j += 1
+                        if snippet[-j] != selection[-(j+1)]:
                             add = False
                             break
                     if add:
@@ -182,20 +181,8 @@ def handle_command(command, argument, notice, target, session):
                     break
             if [] == usable_selections:
                 usable_selections = selections
-            shuffle(usable_selections)
-            return usable_selections[0][select_length]
-
-        def malkovich_undesired(tokens):
-            #for token in tokens:
-            #    if None != re.match("^" + URLREGEX, token):
-            #        del(tokens[tokens.index(token)])
-            for name in session.uses_in_chan:
-                while True:
-                    try:
-                        tokens[tokens.index(name.lower())] = "malkovich"
-                    except ValueError:
-                        break
-            return tokens
+            selection = choice(usable_selections)
+            return selection[select_length]
 
         hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
         markovfeed_name = "markovfeed_" + hash_string
@@ -209,10 +196,24 @@ def handle_command(command, argument, notice, target, session):
         for line in lines:
             line = line.replace("\n", "").lower()
             tokens += line.split()
-        tokens = malkovich_undesired(tokens)
         if len(tokens) <= select_length:
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
+        urls = []
+        url_escape = "\nURL"
+        url_starts = ["http://", "https://", "<http://", "<https://"]
+        for i in range(len(tokens)):
+            for url_start in url_starts:
+                if tokens[i][:len(url_start)] == url_start:
+                    length = len(tokens[i])
+                    if url_start[0] == "<":
+                        try:
+                            length = tokens[i].index(">") + 1
+                        except ValueError:
+                            pass
+                    urls += [tokens[i][:length]]
+                    tokens[i] = url_escape + tokens[i][length:]
+                    break
         for i in range(len(tokens) - select_length):
             token_list = []
             for j in range(select_length + 1):
@@ -224,12 +225,21 @@ def handle_command(command, argument, notice, target, session):
         msg = ""
         while 1:
             new_end = markov(snippet)
+            for name in session.uses_in_chan:
+                if new_end[:len(name)] == name.lower():
+                    new_end = "malkovich" + new_end[len(name):]
+                    break
             if len(msg) + len(new_end) > 200:
                 break
             msg += new_end + " "
             for i in range(select_length - 1):
                 snippet[i] = snippet[i + 1]
             snippet[select_length - 1] = new_end
+        while True:
+            index = msg.find(url_escape)
+            if index < 0:
+                break
+            msg = msg.replace(url_escape, choice(urls), 1)
         notice(msg + "malkovich.")
 
     if "addquote" == command:
@@ -293,7 +303,7 @@ class Session:
                 def notice(msg):
                     self.io.send_line("NOTICE " + target + " :" + msg)
 
-                matches = re.findall(URLREGEX, msg)
+                matches = re.findall("(https?://[^\s>]+)", msg)
                 for i in range(len(matches)):
                     handle_url(matches[i], notice)
                 if "!" == msg[0]:
