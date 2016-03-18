@@ -323,7 +323,7 @@ def handle_url(url, notice, show_url=False):
     if mobile_twitter_hack(url):
         return
     title = bs4.BeautifulSoup(r.text, "html5lib").title
-    if title:
+    if title and title.string:
         prefix = "PAGE TITLE: "
         if show_url:
             prefix = "PAGE TITLE FOR <" + url + ">: "
