@@ -20,6 +20,7 @@ TIMEOUT = 240
 USERNAME = "plomlombot"
 NICKNAME = USERNAME
 TWTFILE = ""
+DBDIR = os.path.expanduser("~/plomlombot_db")
 
 
 class ExceptionForRestart(Exception):
@@ -96,7 +97,7 @@ class IO:
 
 def handle_command(command, argument, notice, target, session):
     hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-    quotesfile_name = "quotes_" + hash_string
+    quotesfile_name = session.dbdir + "/quotes_" + hash_string
 
     def addquote():
         if not os.access(quotesfile_name, os.F_OK):
@@ -186,7 +187,7 @@ def handle_command(command, argument, notice, target, session):
             return selection[select_length]
 
         hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-        markovfeed_name = "markovfeed_" + hash_string
+        markovfeed_name = session.dbdir + "/markovfeed_" + hash_string
         if not os.access(markovfeed_name, os.F_OK):
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
@@ -334,12 +335,13 @@ def handle_url(url, notice, show_url=False):
 
 class Session:
 
-    def __init__(self, io, username, nickname, channel, twtfile):
+    def __init__(self, io, username, nickname, channel, twtfile, dbdir):
         self.io = io
         self.nickname = nickname
         self.channel = channel
         self.users_in_chan = []
         self.twtfile = twtfile
+        self.dbdir = dbdir
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
@@ -362,7 +364,7 @@ class Session:
                     handle_command(tokens[0], argument, notice, target, self)
                     return
                 hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-                markovfeed_name = "markovfeed_" + hash_string
+                markovfeed_name = self.dbdir + "/markovfeed_" + hash_string
                 file = open(markovfeed_name, "a")
                 file.write(msg + "\n")
                 file.close()
@@ -434,9 +436,11 @@ def parse_command_line_arguments():
     parser.add_argument("-n, --nickname", action="store", dest="nickname",
                         default=NICKNAME, help="nickname to use (default: "
                         + NICKNAME + ")")
-    parser.add_argument("-t, --twtfile", action="store", dest="twtfile",
-                        default=TWTFILE, help="twtfile to use (default: "
+    parser.add_argument("-t, --twtxtfile", action="store", dest="twtfile",
+                        default=TWTFILE, help="twtxt file to use (default: "
                         + TWTFILE + ")")
+    parser.add_argument("-d, --dbdir", action="store", dest="dbdir",
+                        default=DBDIR, help="directory to store DB files in")
     parser.add_argument("CHANNEL", action="store", help="channel to join")
     opts, unknown = parser.parse_known_args()
     return opts
@@ -447,7 +451,7 @@ while True:
     try:
         io = IO(opts.server, opts.port, opts.timeout)
         session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
-            opts.twtfile)
+            opts.twtfile, opts.dbdir)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
