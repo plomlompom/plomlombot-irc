@@ -345,8 +345,19 @@ class Session:
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
+        hash_string = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
+        self.logdir = self.dbdir + "/irclogs_" + hash_string + "/"
+        if not os.path.exists(self.logdir):
+            os.makedirs(self.logdir)
 
     def loop(self):
+
+        def log(line):
+            now = datetime.datetime.utcnow()
+            logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a")
+            form = "%Y-%m-%d %H:%M:%S UTC\t"
+            logfile.write(now.strftime(form) + " " + line + "\n")
+            logfile.close()
 
         def handle_privmsg(tokens):
 
@@ -385,6 +396,8 @@ class Session:
             if receiver != self.nickname:
                 target = receiver
             msg = str.join(" ", tokens[3:])[1:]
+            if target == self.channel:
+                log("<" + sender + "> " + msg)
             handle_input(msg, target)
 
         def name_from_join_or_part(tokens):
@@ -408,14 +421,22 @@ class Session:
                 elif tokens[1] == "353":
                     names = tokens[5:]
                     names[0] = names[0][1:]
+                    log("PRESENT: " + str.join(", ", names))
+                    for i in range(len(names)):
+                        names[i] = names[i].replace("@", "").replace("+", "")
                     self.users_in_chan += names
                 elif tokens[1] == "JOIN":
                     name = name_from_join_or_part(tokens)
                     if name != self.nickname:
                         self.users_in_chan += [name]
+                    log(line)
                 elif tokens[1] == "PART":
                     name = name_from_join_or_part(tokens)
                     del(self.users_in_chan[self.users_in_chan.index(name)])
+                    log(line)
+                else:
+                    log(line)
+
 
 def parse_command_line_arguments():
     parser = argparse.ArgumentParser()
