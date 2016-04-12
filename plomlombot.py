@@ -421,10 +421,10 @@ class Session:
                 elif tokens[1] == "353":
                     names = tokens[5:]
                     names[0] = names[0][1:]
-                    log("PRESENT: " + str.join(", ", names))
                     for i in range(len(names)):
                         names[i] = names[i].replace("@", "").replace("+", "")
                     self.users_in_chan += names
+                    log(line)
                 elif tokens[1] == "JOIN":
                     name = name_from_join_or_part(tokens)
                     if name != self.nickname:
