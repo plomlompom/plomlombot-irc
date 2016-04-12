@@ -96,18 +96,16 @@ class IO:
 
 
 def handle_command(command, argument, notice, target, session):
-    hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-    quotesfile_name = session.dbdir + "/quotes_" + hash_string
 
     def addquote():
-        if not os.access(quotesfile_name, os.F_OK):
-            quotesfile = open(quotesfile_name, "w")
+        if not os.access(session.quotesfile, os.F_OK):
+            quotesfile = open(session.quotesfile, "w")
             quotesfile.write("QUOTES FOR " + target + ":\n")
             quotesfile.close()
-        quotesfile = open(quotesfile_name, "a")
+        quotesfile = open(session.quotesfile, "a")
         quotesfile.write(argument + "\n")
         quotesfile.close()
-        quotesfile = open(quotesfile_name, "r")
+        quotesfile = open(session.quotesfile, "r")
         lines = quotesfile.readlines()
         quotesfile.close()
         notice("ADDED QUOTE #" + str(len(lines) - 1))
@@ -132,10 +130,10 @@ def handle_command(command, argument, notice, target, session):
                 (tokens[0] == "search" or not tokens[0].isdigit())):
             help()
             return
-        if not os.access(quotesfile_name, os.F_OK):
+        if not os.access(session.quotesfile, os.F_OK):
             notice("NO QUOTES AVAILABLE")
             return
-        quotesfile = open(quotesfile_name, "r")
+        quotesfile = open(session.quotesfile, "r")
         lines = quotesfile.readlines()
         quotesfile.close()
         lines = lines[1:]
@@ -186,14 +184,12 @@ def handle_command(command, argument, notice, target, session):
             selection = choice(usable_selections)
             return selection[select_length]
 
-        hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-        markovfeed_name = session.dbdir + "/markovfeed_" + hash_string
-        if not os.access(markovfeed_name, os.F_OK):
+        if not os.access(session.markovfile, os.F_OK):
             notice("NOT ENOUGH TEXT TO MARKOV.")
             return
 
         # Lowercase incoming lines, ensure they end in a sentence end mark.
-        file = open(markovfeed_name, "r")
+        file = open(session.markovfile, "r")
         lines = file.readlines()
         file.close()
         tokens = []
@@ -345,10 +341,13 @@ class Session:
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
-        hash_string = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
-        self.logdir = self.dbdir + "/irclogs_" + hash_string + "/"
+        hash_channel = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
+        self.chandir = self.dbdir + "/" + hash_channel + "/"
+        self.logdir = self.chandir + "logs/"
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
+        self.markovfile = self.chandir + "markovfeed"
+        self.quotesfile = self.chandir + "quotes"
 
     def loop(self):
 
@@ -374,9 +373,7 @@ class Session:
                     argument = str.join(" ", tokens[1:])
                     handle_command(tokens[0], argument, notice, target, self)
                     return
-                hash_string = hashlib.md5(target.encode("utf-8")).hexdigest()
-                markovfeed_name = self.dbdir + "/markovfeed_" + hash_string
-                file = open(markovfeed_name, "a")
+                file = open(self.markovfile, "a")
                 file.write(msg + "\n")
                 file.close()
 
@@ -471,8 +468,10 @@ opts = parse_command_line_arguments()
 while True:
     try:
         io = IO(opts.server, opts.port, opts.timeout)
+        hash_server = hashlib.md5(opts.server.encode("utf-8")).hexdigest()
+        dbdir = opts.dbdir + "/" + hash_server 
         session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
-            opts.twtfile, opts.dbdir)
+            opts.twtfile, dbdir)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
