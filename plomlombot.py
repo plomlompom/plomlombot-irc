@@ -154,11 +154,12 @@ def handle_command(command, argument, notice, target, session):
                 notice("NO QUOTES MATCHING QUERY")
             else:
                 for result in results:
-                    notice("QUOTE #" + str(result[0] + 1) + " : " + result[1])
+                    notice("QUOTE #" + str(result[0] + 1) + " : "
+                           + result[1][-1])
             return
         else:
             i = random.randrange(len(lines))
-        notice("QUOTE #" + str(i + 1) + ": " + lines[i])
+        notice("QUOTE #" + str(i + 1) + ": " + lines[i][:-1])
 
     def markov():
         from random import choice, shuffle
@@ -363,7 +364,9 @@ class Session:
             def handle_input(msg, target):
 
                 def notice(msg):
-                    self.io.send_line("NOTICE " + target + " :" + msg)
+                    line = "NOTICE " + target + " :" + msg
+                    self.io.send_line(line)
+                    log(line)
 
                 matches = re.findall("(https?://[^\s>]+)", msg)
                 for i in range(len(matches)):
@@ -393,8 +396,6 @@ class Session:
             if receiver != self.nickname:
                 target = receiver
             msg = str.join(" ", tokens[3:])[1:]
-            if target == self.channel:
-                log("<" + sender + "> " + msg)
             handle_input(msg, target)
 
         def name_from_join_or_part(tokens):
@@ -409,6 +410,7 @@ class Session:
             line = self.io.recv_line()
             if not line:
                 continue
+            log(line)
             tokens = line.split(" ")
             if len(tokens) > 1:
                 if tokens[0] == "PING":
@@ -421,18 +423,13 @@ class Session:
                     for i in range(len(names)):
                         names[i] = names[i].replace("@", "").replace("+", "")
                     self.users_in_chan += names
-                    log(line)
                 elif tokens[1] == "JOIN":
                     name = name_from_join_or_part(tokens)
                     if name != self.nickname:
                         self.users_in_chan += [name]
-                    log(line)
                 elif tokens[1] == "PART":
                     name = name_from_join_or_part(tokens)
                     del(self.users_in_chan[self.users_in_chan.index(name)])
-                    log(line)
-                else:
-                    log(line)
 
 
 def parse_command_line_arguments():
