@@ -53,7 +53,10 @@ class IO:
     def __init__(self, server, port, timeout):
         self.timeout = timeout
         self.socket = socket.socket()
-        self.socket.connect((server, port))
+        try:
+            self.socket.connect((server, port))
+        except TimeoutError:
+            raise ExceptionForRestart
         self.socket.setblocking(0)
         self.line_buffer = []
         self.rune_buffer = ""
