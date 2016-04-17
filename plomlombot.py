@@ -356,7 +356,7 @@ def handle_url(url, notice, show_url=False):
 
 class Session:
 
-    def __init__(self, io, username, nickname, channel, twtfile, dbdir):
+    def __init__(self, io, username, nickname, channel, twtfile, dbdir, rmlogs):
         self.io = io
         self.nickname = nickname
         self.username = username
@@ -364,6 +364,7 @@ class Session:
         self.users_in_chan = []
         self.twtfile = twtfile
         self.dbdir = dbdir
+        self.rmlogs = rmlogs
         self.io.send_line("NICK " + self.nickname)
         self.io.send_line("USER " + self.username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
@@ -419,6 +420,12 @@ class Session:
             file.close()
 
         while True:
+            if self.rmlogs > 0:
+                for f in os.listdir(self.logdir):
+                    f = os.path.join(self.logdir, f)
+                    if os.path.isfile(f) and \
+                            os.stat(f).st_mtime < time.time() - self.rmlogs:
+                        os.remove(f)
             line = self.io.recv_line()
             if not line:
                 continue
@@ -455,7 +462,7 @@ def parse_command_line_arguments():
                         + str(PORT) + ")")
     parser.add_argument("-w, --wait", action="store", dest="timeout",
                         type=int, default=TIMEOUT,
-                        help="timeout in seconds after which to attempt " +
+                        help="timeout in seconds after which to attempt "
                         "reconnect (default: " + str(TIMEOUT) + ")")
     parser.add_argument("-u, --username", action="store", dest="username",
                         default=USERNAME, help="username to use (default: "
@@ -468,6 +475,10 @@ def parse_command_line_arguments():
                         + TWTFILE + ")")
     parser.add_argument("-d, --dbdir", action="store", dest="dbdir",
                         default=DBDIR, help="directory to store DB files in")
+    parser.add_argument("-r, --rmlogs", action="store", dest="rmlogs",
+                        type=int, default=0,
+                        help="maximum age in seconds for logfiles in logs/ "
+                        "(0 means: never delete, and is default)")
     parser.add_argument("CHANNEL", action="store", help="channel to join")
     opts, unknown = parser.parse_known_args()
     return opts
@@ -480,7 +491,7 @@ while True:
         hash_server = hashlib.md5(opts.server.encode("utf-8")).hexdigest()
         dbdir = opts.dbdir + "/" + hash_server 
         session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
-            opts.twtfile, dbdir)
+            opts.twtfile, dbdir, opts.rmlogs)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
