@@ -12,6 +12,7 @@ import random
 import hashlib
 import os
 import plomsearch
+import irclog
 
 # Defaults, may be overwritten by command line arguments.
 SERVER = "irc.freenode.net"
@@ -25,6 +26,26 @@ DBDIR = os.path.expanduser("~/plomlombot_db")
 
 class ExceptionForRestart(Exception):
     pass
+
+
+class Line:
+
+    def __init__(self, line):
+        self.line = line
+        self.tokens = line.split(" ")
+        self.sender = ""
+        if self.tokens[0][0] == ":":
+            for rune in self.tokens[0][1:]:
+                if rune in {"!", "@"}:
+                    break
+                self.sender += rune
+        self.receiver = ""
+        if len(self.tokens) > 2:
+            for rune in self.tokens[2]:
+                if rune in {"!", "@"}:
+                    break
+                if rune != ":":
+                    self.receiver += rune
 
 
 class IO:
@@ -335,12 +356,13 @@ class Session:
     def __init__(self, io, username, nickname, channel, twtfile, dbdir):
         self.io = io
         self.nickname = nickname
+        self.username = username
         self.channel = channel
         self.users_in_chan = []
         self.twtfile = twtfile
         self.dbdir = dbdir
         self.io.send_line("NICK " + self.nickname)
-        self.io.send_line("USER " + username + " 0 * : ")
+        self.io.send_line("USER " + self.username + " 0 * : ")
         self.io.send_line("JOIN " + self.channel)
         hash_channel = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
         self.chandir = self.dbdir + "/" + hash_channel + "/"
@@ -353,83 +375,67 @@ class Session:
     def loop(self):
 
         def log(line):
+            if type(line) == str:
+                line = Line(":" + self.nickname + "!~" + self.username +
+                            "@localhost" + " " + line)
             now = datetime.datetime.utcnow()
-            logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a")
+            logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".raw_log", "a")
             form = "%Y-%m-%d %H:%M:%S UTC\t"
-            logfile.write(now.strftime(form) + " " + line + "\n")
+            logfile.write(now.strftime(form) + " " + line.line + "\n")
             logfile.close()
+            to_log = irclog.format_logline(line, self.channel)
+            if to_log != None:
+                logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a")
+                logfile.write(now.strftime(form) + " " + to_log + "\n")
+                logfile.close()
 
-        def handle_privmsg(tokens):
+        def handle_privmsg(line):
 
-            def handle_input(msg, target):
+            def notice(msg):
+                line = "NOTICE " + target + " :" + msg
+                self.io.send_line(line)
+                log(line)
 
-                def notice(msg):
-                    line = "NOTICE " + target + " :" + msg
-                    self.io.send_line(line)
-                    log(line)
-
-                matches = re.findall("(https?://[^\s>]+)", msg)
-                for i in range(len(matches)):
-                    handle_url(matches[i], notice)
-                if "!" == msg[0]:
-                    tokens = msg[1:].split()
-                    argument = str.join(" ", tokens[1:])
-                    handle_command(tokens[0], argument, notice, target, self)
-                    return
-                file = open(self.markovfile, "a")
-                file.write(msg + "\n")
-                file.close()
-
-            sender = ""
-            for rune in tokens[0]:
-                if rune == "!":
-                    break
-                if rune != ":":
-                    sender += rune
-            receiver = ""
-            for rune in tokens[2]:
-                if rune == "!":
-                    break
-                if rune != ":":
-                    receiver += rune
-            target = sender
-            if receiver != self.nickname:
-                target = receiver
-            msg = str.join(" ", tokens[3:])[1:]
-            handle_input(msg, target)
-
-        def name_from_join_or_part(tokens):
-            token = tokens[0][1:]
-            index_cut = token.find("@")
-            index_ex = token.find("!")
-            if index_ex > 0 and index_ex < index_cut:
-                index_cut = index_ex
-            return token[:index_cut]
+            target = line.sender
+            if line.receiver != self.nickname:
+                target = line.receiver
+            msg = str.join(" ", line.tokens[3:])[1:]
+            matches = re.findall("(https?://[^\s>]+)", msg)
+            for i in range(len(matches)):
+                handle_url(matches[i], notice)
+            if "!" == msg[0]:
+                tokens = msg[1:].split()
+                argument = str.join(" ", tokens[1:])
+                handle_command(tokens[0], argument, notice, target, self)
+                return
+            file = open(self.markovfile, "a")
+            file.write(msg + "\n")
+            file.close()
 
         while True:
             line = self.io.recv_line()
             if not line:
                 continue
+            line = Line(line)
             log(line)
-            tokens = line.split(" ")
-            if len(tokens) > 1:
-                if tokens[0] == "PING":
-                    self.io.send_line("PONG " + tokens[1])
-                elif tokens[1] == "PRIVMSG":
-                    handle_privmsg(tokens)
-                elif tokens[1] == "353":
-                    names = tokens[5:]
+            if len(line.tokens) > 1:
+                if line.tokens[0] == "PING":
+                    self.io.send_line("PONG " + line.tokens[1])
+                elif line.tokens[1] == "PRIVMSG":
+                    handle_privmsg(line)
+                elif line.tokens[1] == "353":
+                    names = line.tokens[5:]
                     names[0] = names[0][1:]
                     for i in range(len(names)):
                         names[i] = names[i].replace("@", "").replace("+", "")
                     self.users_in_chan += names
-                elif tokens[1] == "JOIN":
-                    name = name_from_join_or_part(tokens)
-                    if name != self.nickname:
-                        self.users_in_chan += [name]
-                elif tokens[1] == "PART":
-                    name = name_from_join_or_part(tokens)
-                    del(self.users_in_chan[self.users_in_chan.index(name)])
+                elif line.tokens[1] == "JOIN" and line.sender != self.nickname:
+                    self.users_in_chan += [line.sender]
+                elif line.tokens[1] == "PART":
+                    del(self.users_in_chan[self.users_in_chan.index(line.sender)])
+                elif line.tokens[1] == "NICK":
+                    del(self.users_in_chan[self.users_in_chan.index(line.sender)])
+                    self.users_in_chan += [line.receiver]
 
 
 def parse_command_line_arguments():
