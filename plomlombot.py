@@ -366,9 +366,12 @@ class Session:
         self.io.send_line("JOIN " + self.channel)
         hash_channel = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
         self.chandir = self.dbdir + "/" + hash_channel + "/"
+        self.rawlogdir = self.chandir + "raw_logs/"
         self.logdir = self.chandir + "logs/"
         if not os.path.exists(self.logdir):
             os.makedirs(self.logdir)
+        if not os.path.exists(self.rawlogdir):
+            os.makedirs(self.rawlogdir)
         self.markovfile = self.chandir + "markovfeed"
         self.quotesfile = self.chandir + "quotes"
 
@@ -379,7 +382,7 @@ class Session:
                 line = Line(":" + self.nickname + "!~" + self.username +
                             "@localhost" + " " + line)
             now = datetime.datetime.utcnow()
-            logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".raw_log", "a")
+            logfile = open(self.rawlogdir + now.strftime("%Y-%m-%d") + ".txt", "a")
             form = "%Y-%m-%d %H:%M:%S UTC\t"
             logfile.write(now.strftime(form) + " " + line.line + "\n")
             logfile.close()
