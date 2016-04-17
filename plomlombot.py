@@ -24,6 +24,12 @@ TWTFILE = ""
 DBDIR = os.path.expanduser("~/plomlombot_db")
 
 
+def write_to_file(path, mode, text):
+    f = open(path, mode)
+    f.write(text)
+    f.close()
+
+
 class ExceptionForRestart(Exception):
     pass
 
@@ -123,12 +129,9 @@ def handle_command(command, argument, notice, target, session):
 
     def addquote():
         if not os.access(session.quotesfile, os.F_OK):
-            quotesfile = open(session.quotesfile, "w")
-            quotesfile.write("QUOTES FOR " + target + ":\n")
-            quotesfile.close()
-        quotesfile = open(session.quotesfile, "a")
-        quotesfile.write(argument + "\n")
-        quotesfile.close()
+            write_to_file(session.quotesfile, "w",
+                          "QUOTES FOR " + target + ":\n")
+        write_to_file(session.quotesfile, "a", argument + "\n")
         quotesfile = open(session.quotesfile, "r")
         lines = quotesfile.readlines()
         quotesfile.close()
@@ -386,15 +389,13 @@ class Session:
                 line = Line(":" + self.nickname + "!~" + self.username +
                             "@localhost" + " " + line)
             now = datetime.datetime.utcnow()
-            logfile = open(self.rawlogdir + now.strftime("%Y-%m-%d") + ".txt", "a")
             form = "%Y-%m-%d %H:%M:%S UTC\t"
-            logfile.write(now.strftime(form) + " " + line.line + "\n")
-            logfile.close()
+            write_to_file(self.rawlogdir + now.strftime("%Y-%m-%d") + ".txt",
+                          "a", now.strftime(form) + " " + line.line + "\n")
             to_log = irclog.format_logline(line, self.channel)
             if to_log != None:
-                logfile = open(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a")
-                logfile.write(now.strftime(form) + " " + to_log + "\n")
-                logfile.close()
+                write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt",
+                              "a", now.strftime(form) + " " + to_log + "\n")
 
         def handle_privmsg(line):
 
@@ -415,10 +416,11 @@ class Session:
                 argument = str.join(" ", tokens[1:])
                 handle_command(tokens[0], argument, notice, target, self)
                 return
-            file = open(self.markovfile, "a")
-            file.write(msg + "\n")
-            file.close()
+            write_to_file(self.markovfile, "a", msg + "\n")
 
+        now = datetime.datetime.utcnow()
+        write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a",
+                      "-----------------------\n")
         while True:
             if self.rmlogs > 0:
                 for f in os.listdir(self.logdir):
