@@ -339,17 +339,22 @@ def handle_url(url, notice, show_url=False):
             return True
 
     try:
-        r = requests.get(url, timeout=15)
+        r = requests.get(url, timeout=5, stream=True)
+        r.raw.decode_content = True
+        text = r.raw.read(10000000+1)
+        if len(text) > 10000000:
+            raise ValueError('Too large a response')
     except (requests.exceptions.TooManyRedirects,
             requests.exceptions.ConnectionError,
             requests.exceptions.InvalidURL,
             UnicodeError,
+            ValueError,
             requests.exceptions.InvalidSchema) as error:
         notice("TROUBLE FOLLOWING URL: " + str(error))
         return
     if mobile_twitter_hack(url):
         return
-    title = bs4.BeautifulSoup(r.text, "html5lib").title
+    title = bs4.BeautifulSoup(text, "html5lib").title
     if title and title.string:
         prefix = "PAGE TITLE: "
         if show_url:
