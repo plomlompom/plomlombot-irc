@@ -339,7 +339,7 @@ def handle_url(url, notice, show_url=False):
             return True
 
     try:
-        r = requests.get(url, timeout=5, stream=True)
+        r = requests.get(url, timeout=15, stream=True)
         r.raw.decode_content = True
         text = r.raw.read(10000000+1)
         if len(text) > 10000000:
@@ -347,6 +347,7 @@ def handle_url(url, notice, show_url=False):
     except (requests.exceptions.TooManyRedirects,
             requests.exceptions.ConnectionError,
             requests.exceptions.InvalidURL,
+            requests.exceptions.ReadTimeout,
             UnicodeError,
             ValueError,
             requests.exceptions.InvalidSchema) as error:
