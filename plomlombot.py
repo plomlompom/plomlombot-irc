@@ -180,9 +180,11 @@ def handle_command(command, argument, notice, target, session):
             if len(results) == 0:
                 notice("NO QUOTES MATCHING QUERY")
             else:
-                for result in results:
-                    notice("QUOTE #" + str(result[0] + 1) + " : "
-                           + result[1][-1])
+                if len(results) > 3:
+                    notice("SHOWING 3 OF " + str(len(results)) + " QUOTES")
+                for result in results[:3]:
+                    notice("QUOTE #" + str(result[0] + 1) + ": "
+                           + result[1][:-1])
             return
         else:
             i = random.randrange(len(lines))
