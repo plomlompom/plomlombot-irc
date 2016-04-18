@@ -352,9 +352,9 @@ def handle_url(url, notice, show_url=False):
             ValueError,
             requests.exceptions.InvalidSchema) as error:
         notice("TROUBLE FOLLOWING URL: " + str(error))
-        return
+        return False
     if mobile_twitter_hack(url):
-        return
+        return True
     title = bs4.BeautifulSoup(text, "html5lib").title
     if title and title.string:
         prefix = "PAGE TITLE: "
@@ -363,6 +363,7 @@ def handle_url(url, notice, show_url=False):
         notice(prefix + title.string.strip())
     else:
         notice("PAGE HAS NO TITLE TAG")
+    return True
 
 
 class Session:
@@ -417,8 +418,14 @@ class Session:
                 target = line.receiver
             msg = str.join(" ", line.tokens[3:])[1:]
             matches = re.findall("(https?://[^\s>]+)", msg)
+            url_count = 0
             for i in range(len(matches)):
-                handle_url(matches[i], notice)
+                if handle_url(matches[i], notice):
+                    url_count += 1
+                    if url_count == 3:
+                        notice("MAXIMUM NUMBER OF URLs TO PARSE PER MESSAGE "
+                               "REACHED")
+                        break
             if "!" == msg[0]:
                 tokens = msg[1:].split()
                 argument = str.join(" ", tokens[1:])
