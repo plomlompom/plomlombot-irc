@@ -11,6 +11,7 @@ import bs4
 import random
 import hashlib
 import os
+import signal
 import plomsearch
 import irclog
 
@@ -338,8 +339,16 @@ def handle_url(url, notice, show_url=False):
             handle_url(url, notice, True)
             return True
 
+    class TimeOut(Exception):
+        pass
+
+    def timeout_handler(ignore1, ignore2):
+        raise TimeOut("timeout")
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(15)
     try:
-        r = requests.get(url, timeout=15, stream=True)
+        r = requests.get(url, stream=True)
         r.raw.decode_content = True
         text = r.raw.read(10000000+1)
         if len(text) > 10000000:
@@ -347,12 +356,14 @@ def handle_url(url, notice, show_url=False):
     except (requests.exceptions.TooManyRedirects,
             requests.exceptions.ConnectionError,
             requests.exceptions.InvalidURL,
-            requests.exceptions.ReadTimeout,
+            TimeOut,
             UnicodeError,
             ValueError,
             requests.exceptions.InvalidSchema) as error:
+        signal.alarm(0)
         notice("TROUBLE FOLLOWING URL: " + str(error))
         return False
+    signal.alarm(0)
     if mobile_twitter_hack(url):
         return True
     title = bs4.BeautifulSoup(text, "html5lib").title
