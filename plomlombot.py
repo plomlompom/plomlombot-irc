@@ -74,8 +74,8 @@ class Log:
         identity = ""
         separator = " > "
         if sent:
-            separator = " < "
-            line = Line(line)
+            separator = " "
+            line = Line("< " + line)
             line.sender = self.nickname
             identity = self.username + "@localhost"
         else:
