@@ -136,12 +136,12 @@ def handle_command(command, argument, notice, target, session):
         quotesfile = open(session.quotesfile, "r")
         lines = quotesfile.readlines()
         quotesfile.close()
-        notice("ADDED QUOTE #" + str(len(lines) - 1))
+        notice("added quote #" + str(len(lines) - 1))
 
     def quote():
 
         def help():
-            notice("SYNTAX: !quote [int] OR !quote search QUERY")
+            notice("syntax: !quote [int] OR !quote search QUERY")
             notice("QUERY may be a boolean grouping of quoted or unquoted " +
                    "search terms, examples:")
             notice("!quote search foo")
@@ -159,7 +159,7 @@ def handle_command(command, argument, notice, target, session):
             help()
             return
         if not os.access(session.quotesfile, os.F_OK):
-            notice("NO QUOTES AVAILABLE")
+            notice("no quotes available")
             return
         quotesfile = open(session.quotesfile, "r")
         lines = quotesfile.readlines()
@@ -168,7 +168,7 @@ def handle_command(command, argument, notice, target, session):
         if len(tokens) == 1:
             i = int(tokens[0])
             if i == 0 or i > len(lines):
-                notice("THERE'S NO QUOTE OF THAT INDEX")
+                notice("there's no quote of that index")
                 return
             i = i - 1
         elif len(tokens) > 1:
@@ -176,20 +176,20 @@ def handle_command(command, argument, notice, target, session):
             try:
                 results = plomsearch.search(query, lines)
             except plomsearch.LogicParserError as err:
-                notice("FAILED QUERY PARSING: " + str(err))
+                notice("failed query parsing: " + str(err))
                 return
             if len(results) == 0:
-                notice("NO QUOTES MATCHING QUERY")
+                notice("no quotes matching query")
             else:
                 if len(results) > 3:
-                    notice("SHOWING 3 OF " + str(len(results)) + " QUOTES")
+                    notice("showing 3 of " + str(len(results)) + " quotes")
                 for result in results[:3]:
-                    notice("QUOTE #" + str(result[0] + 1) + ": "
+                    notice("quote #" + str(result[0] + 1) + ": "
                            + result[1][:-1])
             return
         else:
             i = random.randrange(len(lines))
-        notice("QUOTE #" + str(i + 1) + ": " + lines[i][:-1])
+        notice("quote #" + str(i + 1) + ": " + lines[i][:-1])
 
     def markov():
         from random import choice, shuffle
@@ -216,7 +216,7 @@ def handle_command(command, argument, notice, target, session):
             return selection[select_length]
 
         if not os.access(session.markovfile, os.F_OK):
-            notice("NOT ENOUGH TEXT TO MARKOV.")
+            notice("not enough text to markov")
             return
 
         # Lowercase incoming lines, ensure they end in a sentence end mark.
@@ -231,7 +231,7 @@ def handle_command(command, argument, notice, target, session):
                 line += "."
             tokens += line.split()
         if len(tokens) <= select_length:
-            notice("NOT ENOUGH TEXT TO MARKOV.")
+            notice("not enough text to markov")
             return
 
         # Replace URLs with escape string for now, so that the Markov selector
@@ -299,7 +299,7 @@ def handle_command(command, argument, notice, target, session):
             try:
                 twtfile = open(session.twtfile, mode)
             except (PermissionError, FileNotFoundError) as err:
-                notice("CAN'T ACCESS OR CREATE TWT FILE: " + str(err))
+                notice("can't access or create twt file: " + str(err))
                 return None
             return twtfile
 
@@ -314,7 +314,7 @@ def handle_command(command, argument, notice, target, session):
             return
         twtfile.write(datetime.utcnow().isoformat() + "\t" + argument + "\n")
         twtfile.close()
-        notice("WROTE TWT.")
+        notice("wrote twt.")
 
     if "addquote" == command:
         addquote()
@@ -361,19 +361,19 @@ def handle_url(url, notice, show_url=False):
             ValueError,
             requests.exceptions.InvalidSchema) as error:
         signal.alarm(0)
-        notice("TROUBLE FOLLOWING URL: " + str(error))
+        notice("trouble following url: " + str(error))
         return False
     signal.alarm(0)
     if mobile_twitter_hack(url):
         return True
     title = bs4.BeautifulSoup(text, "html5lib").title
     if title and title.string:
-        prefix = "PAGE TITLE: "
+        prefix = "page title: "
         if show_url:
-            prefix = "PAGE TITLE FOR <" + url + ">: "
+            prefix = "page title for <" + url + ">: "
         notice(prefix + title.string.strip())
     else:
-        notice("PAGE HAS NO TITLE TAG")
+        notice("page has no title tag")
     return True
 
 
@@ -434,8 +434,8 @@ class Session:
                 if handle_url(matches[i], notice):
                     url_count += 1
                     if url_count == 3:
-                        notice("MAXIMUM NUMBER OF URLs TO PARSE PER MESSAGE "
-                               "REACHED")
+                        notice("maximum number of urls to parse per message "
+                               "reached")
                         break
             if "!" == msg[0]:
                 tokens = msg[1:].split()
