@@ -55,9 +55,59 @@ class Line:
                     self.receiver += rune
 
 
+class Log:
+
+    def __init__(self, chandir, nickname, username, channel, rmlogs):
+        self.nickname = nickname
+        self.username = username
+        self.channel = channel
+        self.chandir = chandir
+        self.rmlogcycle = rmlogs
+        self.rawlogdir = chandir + "raw_logs/"
+        self.logdir = chandir + "logs/"
+        if not os.path.exists(self.logdir):
+            os.makedirs(self.logdir)
+        if not os.path.exists(self.rawlogdir):
+            os.makedirs(self.rawlogdir)
+
+    def log(self, line, sent=False):
+        identity = ""
+        separator = " > "
+        if sent:
+            separator = " < "
+            line = Line(line)
+            line.sender = self.nickname
+            identity = self.username + "@localhost"
+        else:
+            if type(line) == str:
+                line = Line(line)
+        now = datetime.datetime.utcnow()
+        form = "%Y-%m-%d %H:%M:%S UTC"
+        write_to_file(self.rawlogdir + now.strftime("%Y-%m-%d") + ".txt", "a",
+                      now.strftime(form) + separator + line.line + "\n")
+        to_log = irclog.format_logline(line, self.channel, identity)
+        if to_log != None:
+            write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a",
+                          now.strftime(form) + " " + to_log + "\n")
+
+    def rmlogs(self):
+        if self.rmlogcycle > 0:
+            for f in os.listdir(self.logdir):
+                f = os.path.join(self.logdir, f)
+                if os.path.isfile(f) and \
+                        os.stat(f).st_mtime < time.time() - self.rmlogcycle:
+                    os.remove(f)
+
+    def separator_line(self):
+        now = datetime.datetime.utcnow()
+        write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a",
+                      "-----------------------\n")
+
+
 class IO:
 
     def __init__(self, server, port, timeout):
+        self.log = None
         self.timeout = timeout
         self.socket = socket.socket()
         try:
@@ -84,6 +134,8 @@ class IO:
             print("NOT SENT LINE TO SERVER (too long): " + msg)
         print("LINE TO SERVER: "
               + str(datetime.datetime.now()) + ": " + msg)
+        if self.log != None:
+            self.log.log(msg, True)
         msg = msg + "\r\n"
         msg_len = len(msg)
         total_sent_len = 0
@@ -121,6 +173,8 @@ class IO:
     def recv_line(self, send_ping=True):
         line = self._recv_line_wrapped(send_ping)
         if line:
+            if self.log != None:
+                self.log.log(line)
             print("LINE FROM SERVER " + str(datetime.datetime.now()) + ": " +
                   line)
         return line
@@ -400,47 +454,26 @@ class Session:
     def __init__(self, io, username, nickname, channel, twtfile, dbdir, rmlogs):
         self.io = io
         self.nickname = nickname
-        self.username = username
-        self.channel = channel
         self.users_in_chan = []
         self.twtfile = twtfile
-        self.dbdir = dbdir
-        self.rmlogs = rmlogs
+        hash_channel = hashlib.md5(channel.encode("utf-8")).hexdigest()
+        chandir = dbdir + "/" + hash_channel + "/"
+        self.markovfile = chandir + "markovfeed"
+        self.quotesfile = chandir + "quotes"
+        self.log = Log(chandir, self.nickname, username, channel, rmlogs)
         self.io.send_line("NICK " + self.nickname)
-        self.io.send_line("USER " + self.username + " 0 * : ")
-        self.io.send_line("JOIN " + self.channel)
-        hash_channel = hashlib.md5(self.channel.encode("utf-8")).hexdigest()
-        self.chandir = self.dbdir + "/" + hash_channel + "/"
-        self.rawlogdir = self.chandir + "raw_logs/"
-        self.logdir = self.chandir + "logs/"
-        if not os.path.exists(self.logdir):
-            os.makedirs(self.logdir)
-        if not os.path.exists(self.rawlogdir):
-            os.makedirs(self.rawlogdir)
-        self.markovfile = self.chandir + "markovfeed"
-        self.quotesfile = self.chandir + "quotes"
+        self.io.send_line("USER " + username + " 0 * : ")
+        self.io.send_line("JOIN " + channel)
+        self.io.log = self.log
+        self.log.separator_line()
 
     def loop(self):
-
-        def log(line):
-            if type(line) == str:
-                line = Line(":" + self.nickname + "!~" + self.username +
-                            "@localhost" + " " + line)
-            now = datetime.datetime.utcnow()
-            form = "%Y-%m-%d %H:%M:%S UTC\t"
-            write_to_file(self.rawlogdir + now.strftime("%Y-%m-%d") + ".txt",
-                          "a", now.strftime(form) + " " + line.line + "\n")
-            to_log = irclog.format_logline(line, self.channel)
-            if to_log != None:
-                write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt",
-                              "a", now.strftime(form) + " " + to_log + "\n")
 
         def handle_privmsg(line):
 
             def notice(msg):
                 line = "NOTICE " + target + " :" + msg
                 self.io.send_line(line)
-                log(line)
 
             target = line.sender
             if line.receiver != self.nickname:
@@ -462,21 +495,12 @@ class Session:
                 return
             write_to_file(self.markovfile, "a", msg + "\n")
 
-        now = datetime.datetime.utcnow()
-        write_to_file(self.logdir + now.strftime("%Y-%m-%d") + ".txt", "a",
-                      "-----------------------\n")
         while True:
-            if self.rmlogs > 0:
-                for f in os.listdir(self.logdir):
-                    f = os.path.join(self.logdir, f)
-                    if os.path.isfile(f) and \
-                            os.stat(f).st_mtime < time.time() - self.rmlogs:
-                        os.remove(f)
+            self.log.rmlogs()
             line = self.io.recv_line()
             if not line:
                 continue
             line = Line(line)
-            log(line)
             if len(line.tokens) > 1:
                 if line.tokens[0] == "PING":
                     self.io.send_line("PONG " + line.tokens[1])

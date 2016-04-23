@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 
-def format_logline(line, channel):
+def format_logline(line, channel, identity):
     if len(line.tokens) > 2:
         if line.tokens[1] == "JOIN":
-            return "-> " + line.sender + " (" + \
-                line.tokens[0][len(line.sender)+2:] + ") joins"
+            if identity == "":
+                identity = line.tokens[0][len(line.sender) + 2:]
+            return "-> " + line.sender + " (" + identity + ") joins"
         elif line.tokens[1] == "PART":
             msg = ""
             if len(line.tokens) > 3 and line.tokens[3][0] == ":":
@@ -14,7 +15,7 @@ def format_logline(line, channel):
             msg = ""
             if len(line.tokens) > 2 and line.tokens[2][0] == ":":
                 msg = " (" + str.join(" ", line.tokens[2:])[1:] + ")"
-            return "<- " + line.sender + " quits server" + msg 
+            return "<- " + line.sender + " quits server" + msg
         elif line.tokens[1] == "NICK":
             return "-- " + line.sender + " changes their name to " + line.receiver 
         elif len(line.tokens) > 3:
