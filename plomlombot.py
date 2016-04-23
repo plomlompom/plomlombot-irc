@@ -192,9 +192,9 @@ def handle_command(command, argument, notice, target, session):
         notice("quote #" + str(i + 1) + ": " + lines[i][:-1])
 
     def markov():
-        from random import choice, shuffle
-        select_length = 2
-        selections = []
+
+        def help():
+            notice("syntax: !markov [int]")
 
         def markov(snippet):
             usable_selections = []
@@ -215,6 +215,24 @@ def handle_command(command, argument, notice, target, session):
             selection = choice(usable_selections)
             return selection[select_length]
 
+        if "" == argument:
+            tokens = []
+        else:
+            tokens = argument.split(" ")
+        if (len(tokens) > 1 or (len(tokens) == 1 and not tokens[0].isdigit())):
+            help()
+            return
+
+        from random import choice, shuffle
+        select_length = 2
+        if len(tokens) == 1:
+            n = int(tokens[0])
+            if n > 0:
+                select_length = n
+            else:
+                notice("bad value, using default: " + str(select_length))
+        selections = []
+
         if not os.access(session.markovfile, os.F_OK):
             notice("not enough text to markov")
             return
@@ -230,7 +248,7 @@ def handle_command(command, argument, notice, target, session):
             if line[-1] not in sentence_end_markers:
                 line += "."
             tokens += line.split()
-        if len(tokens) <= select_length:
+        if len(tokens) - 1 <= select_length:
             notice("not enough text to markov")
             return
 
@@ -266,8 +284,8 @@ def handle_command(command, argument, notice, target, session):
         shuffle(selections)
         for i in range(len(selections)):
             if selections[i][0][-1] in sentence_end_markers:
-                for i in range(select_length):
-                    snippet[i] = selections[i][i + 1]
+                for j in range(select_length):
+                    snippet[j] = selections[j][j + 1]
                 break
         msg = ""
         malkovich = "malkovich"
