@@ -348,7 +348,7 @@ def handle_url(url, notice, show_url=False):
     signal.signal(signal.SIGALRM, timeout_handler)
     signal.alarm(15)
     try:
-        r = requests.get(url, stream=True)
+        r = requests.get(url, headers = {'User-Agent': 'plomlombot'}, stream=True)
         r.raw.decode_content = True
         text = r.raw.read(10000000+1)
         if len(text) > 10000000:
