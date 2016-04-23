@@ -194,7 +194,7 @@ def handle_command(command, argument, notice, target, session):
     def markov():
 
         def help():
-            notice("syntax: !markov [int]")
+            notice("syntax: !markov [integer from 1 to infinite]")
 
         def markov(snippet):
             usable_selections = []
@@ -234,7 +234,7 @@ def handle_command(command, argument, notice, target, session):
         selections = []
 
         if not os.access(session.markovfile, os.F_OK):
-            notice("not enough text to markov")
+            notice("not enough text to markov for selection length")
             return
 
         # Lowercase incoming lines, ensure they end in a sentence end mark.
