@@ -488,7 +488,7 @@ class Session:
                         notice("maximum number of urls to parse per message "
                                "reached")
                         break
-            if "!" == msg[0]:
+            if "!" == msg[0] and len(tokens) > 1:
                 tokens = msg[1:].split()
                 argument = str.join(" ", tokens[1:])
                 handle_command(tokens[0], argument, notice, target, self)
