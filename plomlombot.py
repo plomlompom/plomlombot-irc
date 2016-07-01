@@ -118,7 +118,10 @@ class IO:
         self.line_buffer = []
         self.rune_buffer = ""
         self.last_pong = time.time()
-        self.servername = self.recv_line(send_ping=False).split(" ")[0][1:]
+        line = self.recv_line(send_ping=False)
+        if not line or len(line) < 1:
+            raise ExceptionForRestart
+        self.servername = line.split(" ")[0][1:]
 
     def _pingtest(self, send_ping=True):
         if self.last_pong + self.timeout < time.time():
