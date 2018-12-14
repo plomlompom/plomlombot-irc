@@ -454,13 +454,15 @@ def handle_url(url, notice, show_url=False):
 
 class Session:
 
-    def __init__(self, io, username, nickname, channel, twtfile, dbdir, rmlogs):
+    def __init__(self, io, username, nickname, channel, twtfile, dbdir, rmlogs,
+                 markov_input):
         self.io = io
         self.nickname = nickname
         self.users_in_chan = []
         self.twtfile = twtfile
         hash_channel = hashlib.md5(channel.encode("utf-8")).hexdigest()
         chandir = dbdir + "/" + hash_channel + "/"
+        self.markov_input = markov_input
         self.markovfile = chandir + "markovfeed"
         self.quotesfile = chandir + "quotes"
         self.log = Log(chandir, self.nickname, username, channel, rmlogs)
@@ -496,7 +498,8 @@ class Session:
                 argument = str.join(" ", tokens[1:])
                 handle_command(tokens[0], argument, notice, target, self)
                 return
-            write_to_file(self.markovfile, "a", msg + "\n")
+            if self.markov_input:
+                write_to_file(self.markovfile, "a", msg + "\n")
 
         while True:
             self.log.rmlogs()
@@ -552,6 +555,9 @@ def parse_command_line_arguments():
                         type=int, default=0,
                         help="maximum age in seconds for logfiles in logs/ "
                         "(0 means: never delete, and is default)")
+    parser.add_argument("-m, --markov_store", action="store_true",
+                        dest="markov_store",
+                        help="log channel discussions for !markov input")
     parser.add_argument("CHANNEL", action="store", help="channel to join")
     opts, unknown = parser.parse_known_args()
     return opts
@@ -562,9 +568,9 @@ while True:
     try:
         io = IO(opts.server, opts.port, opts.timeout)
         hash_server = hashlib.md5(opts.server.encode("utf-8")).hexdigest()
-        dbdir = opts.dbdir + "/" + hash_server 
+        dbdir = opts.dbdir + "/" + hash_server
         session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
-            opts.twtfile, dbdir, opts.rmlogs)
+                          opts.twtfile, dbdir, opts.rmlogs, opts.markov_input)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
