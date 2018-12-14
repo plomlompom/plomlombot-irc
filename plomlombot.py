@@ -570,7 +570,7 @@ while True:
         hash_server = hashlib.md5(opts.server.encode("utf-8")).hexdigest()
         dbdir = opts.dbdir + "/" + hash_server
         session = Session(io, opts.username, opts.nickname, opts.CHANNEL,
-                          opts.twtfile, dbdir, opts.rmlogs, opts.markov_input)
+                          opts.twtfile, dbdir, opts.rmlogs, opts.markov_store)
         session.loop()
     except ExceptionForRestart:
         io.socket.close()
