@@ -234,7 +234,7 @@ def handle_command(command, argument, notice, target, session):
                 notice("there's no quote of that index")
                 return
             i = i - 1
-        else:
+        elif len(tokens) > 1:
             to_skip = 0
             if tokens[0] == "search":
                 query = str.join(" ", tokens[1:])
