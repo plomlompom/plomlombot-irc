@@ -220,7 +220,7 @@ def handle_command(command, argument, notice, target, session):
             (tokens[0] == "offset-search" and
              ((not len(tokens) > 2) or (not tokens[1].isdigit())))):
             help()
-           return
+            return
         if not os.access(session.quotesfile, os.F_OK):
             notice("no quotes available")
             return
