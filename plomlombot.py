@@ -198,23 +198,29 @@ def handle_command(command, argument, notice, target, session):
     def quote():
 
         def help():
-            notice("syntax: !quote [int] OR !quote search QUERY")
+            notice("syntax: !quote [int] OR !quote search QUERY "
+                   "OR !quote offset-search [int] QUERY")
             notice("QUERY may be a boolean grouping of quoted or unquoted " +
                    "search terms, examples:")
             notice("!quote search foo")
             notice("!quote search foo AND (bar OR NOT baz)")
             notice("!quote search \"foo\\\"bar\" AND ('NOT\"' AND \"'foo'\"" +
                    " OR 'bar\\'baz')")
+            notice("The offset-search int argument defines how many matches "
+                   "to skip (useful if results are above maximum number to "
+                   "display).")
 
         if "" == argument:
             tokens = []
         else:
             tokens = argument.split(" ")
-        if (len(tokens) > 1 and tokens[0] != "search") or \
-            (len(tokens) == 1 and
-                (tokens[0] == "search" or not tokens[0].isdigit())):
-            help()
-            return
+        if len(tokens) != 0:
+           if (len(tokens) == 1 and not tokens[0].isdigit()) or \
+               tokens[0] not in {"search", "offset-search"} or \
+               (tokens[0] == "offset-search" and
+                ((not len(tokens) > 2) or (not tokens[1].isdigit()))):
+                help()
+                return
         if not os.access(session.quotesfile, os.F_OK):
             notice("no quotes available")
             return
@@ -228,8 +234,13 @@ def handle_command(command, argument, notice, target, session):
                 notice("there's no quote of that index")
                 return
             i = i - 1
-        elif len(tokens) > 1:
-            query = str.join(" ", tokens[1:])
+        else:
+            to_skip = 0
+            if tokens[0] == "search":
+                query = str.join(" ", tokens[1:])
+            elif tokens[0] == "offset-search":
+                to_skip = int(tokens[1])
+                query = str.join(" ", tokens[2:])
             try:
                 results = plomsearch.search(query, lines)
             except plomsearch.LogicParserError as err:
@@ -238,11 +249,16 @@ def handle_command(command, argument, notice, target, session):
             if len(results) == 0:
                 notice("no quotes matching query")
             else:
-                if len(results) > 3:
-                    notice("showing 3 of " + str(len(results)) + " quotes")
-                for result in results[:3]:
-                    notice("quote #" + str(result[0] + 1) + ": "
-                           + result[1][:-1])
+                if to_skip >= len(results):
+                    notice("skipped all quotes matching query")
+                else:
+                    notice("found %s matches, showing max. 3, skipping %s"
+                           %s (len(results), to_skip))
+                for i in range(len(results)):
+                    if i >= to_skip and i < to_skip + 3:
+                        result = results[i]
+                        notice("quote #" + str(result[0] + 1) + ": "
+                               + result[1][:-1])
             return
         else:
             i = random.randrange(len(lines))
