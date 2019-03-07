@@ -214,12 +214,12 @@ def handle_command(command, argument, notice, target, session):
             tokens = []
         else:
             tokens = argument.split(" ")
-       if (len(tokens) == 1 and not tokens[0].isdigit()) or \
-          (tokens > 1 and
-           tokens[0] not in {"search", "offset-search"} or
-           (tokens[0] == "offset-search" and
-            ((not len(tokens) > 2) or (not tokens[1].isdigit())))):
-           help()
+        if (len(tokens) == 1 and not tokens[0].isdigit()) or \
+           (tokens > 1 and
+            tokens[0] not in {"search", "offset-search"} or
+            (tokens[0] == "offset-search" and
+             ((not len(tokens) > 2) or (not tokens[1].isdigit())))):
+            help()
            return
         if not os.access(session.quotesfile, os.F_OK):
             notice("no quotes available")
