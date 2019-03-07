@@ -253,7 +253,7 @@ def handle_command(command, argument, notice, target, session):
                     notice("skipped all quotes matching query")
                 else:
                     notice("found %s matches, showing max. 3, skipping %s"
-                           %s (len(results), to_skip))
+                           % (len(results), to_skip))
                 for i in range(len(results)):
                     if i >= to_skip and i < to_skip + 3:
                         result = results[i]
